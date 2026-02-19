@@ -94,7 +94,8 @@ export function PlayerHand({
       <style>{`
         .player-hand {
           flex: 1;
-          min-width: 320px;
+          min-width: 440px;
+          min-height: 200px;
         }
         .player-hand h3 {
           font-size: 0.9rem;
@@ -109,11 +110,11 @@ export function PlayerHand({
         .prod-card {
           background: var(--surface2);
           border: 1px solid var(--border);
-          border-radius: 10px;
+          border-radius: 8px;
           padding: 0;
-          min-width: 120px;
-          width: 120px;
-          min-height: 160px;
+          min-width: 132px;
+          width: 132px;
+          min-height: 176px;
           display: flex;
           flex-direction: column;
           align-items: stretch;
@@ -137,7 +138,7 @@ export function PlayerHand({
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 0.5rem;
+          padding: 0.65rem;
           min-height: 0;
           border: none;
           background: transparent;
@@ -150,27 +151,33 @@ export function PlayerHand({
         }
         .prod-card-top {
           background: #2c4a6e;
+          border-radius: 8px 8px 0 0;
         }
         .prod-card-divider {
           height: 2px;
           background: var(--border);
+          flex: none;
         }
         .prod-card-bottom {
           background: #6e2c2c;
+          border-radius: 0 0 8px 8px;
         }
         .prod-card-emojis {
           display: flex;
           flex-wrap: wrap;
-          gap: 0.25rem;
+          gap: 0.2rem;
           justify-content: center;
           align-items: center;
         }
+        .prod-card-bottom .prod-card-emojis {
+          max-width: 100%;
+        }
         .prod-emoji {
-          font-size: 1.5rem;
+          font-size: 1.35rem;
           line-height: 1;
         }
         .prod-emoji.slot {
-          padding: 0.15rem;
+          padding: 0.12rem;
           border-radius: 6px;
           border: 2px solid transparent;
           background: transparent;

@@ -156,82 +156,83 @@ export function GameBoard({ state, setState }: Props) {
             <MarketStrip market={state.market} />
           </section>
 
-      <section className="offer-row">
-        <div className="railroad-offer-with-deck">
-          <h3 className="offer-section-title">Railroads (auction)</h3>
-          <div className="offer-deck-and-cards">
-            <div className="deck-pile" title="Railroad deck">
-              <div className="deck-card-back" aria-hidden />
-              <span className="deck-count" aria-label={`${state.railroadDeck.length} railroads remaining`}>
-                {state.railroadDeck.length}
-              </span>
-            </div>
-            <RailroadOffer
-              railroads={state.railroadOffer}
-              onSelect={(idx) => togglePending({ type: 'startAuction', railroadIndex: idx })}
-              onConfirmStartAuction={confirmStartAuction}
-              disabled={isAuction || actionTakenThisTurn}
-              currentPlayerMoney={current.money}
-              selectedRailroadIndex={pendingAction?.type === 'startAuction' ? pendingAction.railroadIndex : null}
-              hideTitle
-            />
-          </div>
-        </div>
-        <div className="town-offer-with-deck">
-          <h3 className="offer-section-title">Town</h3>
-          <div className="offer-deck-and-cards">
-            <div className="deck-pile" title="Town deck">
-              <div className="deck-card-back" aria-hidden />
-              <span className="deck-count" aria-label={`${state.townDeck.length} towns remaining`}>
-                {state.townDeck.length}
-              </span>
-            </div>
-            <div className="town-slot">
-              {state.currentTown ? (
-                <TownCard
-                  town={state.currentTown}
-                  onBuySpecific={() => togglePending({ type: 'buyTown', useSpecific: true })}
-                  onBuyAny={() => togglePending({ type: 'buyTown', useSpecific: false })}
-                  player={current}
-                  selectedBuySpecific={pendingAction?.type === 'buyTown' ? pendingAction.useSpecific : null}
-                  actionsDisabled={actionTakenThisTurn}
+          <div className="below-market-row">
+            <div className="game-main-left">
+              <section className="offer-row">
+                <div className="railroad-offer-with-deck">
+                  <h3 className="offer-section-title">Railroads (auction)</h3>
+                  <div className="offer-deck-and-cards">
+                    <div className="deck-pile" title="Railroad deck">
+                      <div className="deck-card-back" aria-hidden />
+                      <span className="deck-count" aria-label={`${state.railroadDeck.length} railroads remaining`}>
+                        {state.railroadDeck.length}
+                      </span>
+                    </div>
+                    <RailroadOffer
+                      railroads={state.railroadOffer}
+                      onSelect={(idx) => togglePending({ type: 'startAuction', railroadIndex: idx })}
+                      onConfirmStartAuction={confirmStartAuction}
+                      disabled={isAuction || actionTakenThisTurn}
+                      currentPlayerMoney={current.money}
+                      selectedRailroadIndex={pendingAction?.type === 'startAuction' ? pendingAction.railroadIndex : null}
+                      hideTitle
+                    />
+                  </div>
+                </div>
+                <div className="town-offer-with-deck">
+                  <h3 className="offer-section-title">Town</h3>
+                  <div className="offer-deck-and-cards">
+                    <div className="deck-pile" title="Town deck">
+                      <div className="deck-card-back" aria-hidden />
+                      <span className="deck-count" aria-label={`${state.townDeck.length} towns remaining`}>
+                        {state.townDeck.length}
+                      </span>
+                    </div>
+                    <div className="town-slot">
+                      {state.currentTown ? (
+                        <TownCard
+                          town={state.currentTown}
+                          onBuySpecific={() => togglePending({ type: 'buyTown', useSpecific: true })}
+                          onBuyAny={() => togglePending({ type: 'buyTown', useSpecific: false })}
+                          player={current}
+                          selectedBuySpecific={pendingAction?.type === 'buyTown' ? pendingAction.useSpecific : null}
+                          actionsDisabled={actionTakenThisTurn}
+                        />
+                      ) : (
+                        <div className="empty-slot">No town available</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section className="buildings-section">
+                <BuildingOffer
+                  buildings={state.buildingOffer}
+                  onSelect={(idx) => togglePending({ type: 'buyBuilding', buildingIndex: idx })}
+                  onConfirmBuy={confirmBuyBuilding}
+                  currentPlayerMoney={current.money}
+                  selectedBuildingIndex={pendingAction?.type === 'buyBuilding' ? pendingAction.buildingIndex : null}
+                  selectionDisabled={actionTakenThisTurn}
                 />
-              ) : (
-                <div className="empty-slot">No town available</div>
-              )}
+              </section>
             </div>
+            <section className="player-area">
+              <PlayerHand
+                hand={current.hand}
+                onProduce={(cardIndex) => togglePending({ type: 'production', cardIndex })}
+                onPlayCard={playProduction}
+                onToggleProductionIndex={toggleProductionIndex}
+                disabled={isAuction || actionTakenThisTurn}
+                canPlaySelected={canPlaySelectedCard}
+                commodities={current.commodities}
+                buildings={current.buildings}
+                selectedCardIndex={pendingAction?.type === 'production' ? pendingAction.cardIndex : null}
+                productionSelection={productionSelection}
+                maxProduction={maxProduction}
+              />
+            </section>
           </div>
         </div>
-      </section>
-
-      <div className="buildings-and-hand-row">
-        <section className="buildings-section">
-          <BuildingOffer
-            buildings={state.buildingOffer}
-            onSelect={(idx) => togglePending({ type: 'buyBuilding', buildingIndex: idx })}
-            onConfirmBuy={confirmBuyBuilding}
-            currentPlayerMoney={current.money}
-            selectedBuildingIndex={pendingAction?.type === 'buyBuilding' ? pendingAction.buildingIndex : null}
-            selectionDisabled={actionTakenThisTurn}
-          />
-        </section>
-        <section className="player-area">
-          <PlayerHand
-            hand={current.hand}
-            onProduce={(cardIndex) => togglePending({ type: 'production', cardIndex })}
-            onPlayCard={playProduction}
-            onToggleProductionIndex={toggleProductionIndex}
-            disabled={isAuction || actionTakenThisTurn}
-            canPlaySelected={canPlaySelectedCard}
-            commodities={current.commodities}
-            buildings={current.buildings}
-            selectedCardIndex={pendingAction?.type === 'production' ? pendingAction.cardIndex : null}
-            productionSelection={productionSelection}
-            maxProduction={maxProduction}
-          />
-        </section>
-      </div>
-      </div>
 
       <aside className="game-sidebar card">
         <h3>Your resources</h3>
@@ -542,12 +543,17 @@ export function GameBoard({ state, setState }: Props) {
           text-align: center;
           color: var(--text-muted);
         }
-        .buildings-and-hand-row {
+        .below-market-row {
           display: flex;
           gap: 1rem;
           align-items: flex-start;
-          margin-bottom: 1rem;
           min-width: 0;
+        }
+        .game-main-left {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          flex-shrink: 0;
         }
         .buildings-section {
           flex-shrink: 0;
