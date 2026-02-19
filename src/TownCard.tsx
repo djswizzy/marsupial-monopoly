@@ -23,9 +23,10 @@ type Props = {
   onBuySpecific: () => void
   onBuyAny: () => void
   selectedBuySpecific?: boolean | null
+  actionsDisabled?: boolean
 }
 
-export function TownCard({ town, player, onBuySpecific, onBuyAny, selectedBuySpecific = null }: Props) {
+export function TownCard({ town, player, onBuySpecific, onBuyAny, selectedBuySpecific = null, actionsDisabled = false }: Props) {
   const specificOk = canBuySpecific(player, town)
   const anyOk = canBuyAny(player, town)
   const costDesc = Object.entries(town.costSpecific ?? {})
@@ -42,7 +43,7 @@ export function TownCard({ town, player, onBuySpecific, onBuyAny, selectedBuySpe
             type="button"
             className={`secondary small ${selectedBuySpecific === true ? 'selected' : ''}`}
             onClick={onBuySpecific}
-            disabled={!specificOk}
+            disabled={actionsDisabled || !specificOk}
           >
             Pay {costDesc}
           </button>
@@ -52,7 +53,7 @@ export function TownCard({ town, player, onBuySpecific, onBuyAny, selectedBuySpe
             type="button"
             className={`secondary small ${selectedBuySpecific === false ? 'selected' : ''}`}
             onClick={onBuyAny}
-            disabled={!anyOk}
+            disabled={actionsDisabled || !anyOk}
           >
             Pay {town.costAny} any
           </button>
@@ -60,25 +61,31 @@ export function TownCard({ town, player, onBuySpecific, onBuyAny, selectedBuySpe
       </div>
       <style>{`
         .town-card {
-          padding: 0.75rem;
+          width: 100px;
+          aspect-ratio: 100 / 130;
+          padding: 0.5rem;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
         }
         .town-name {
           font-weight: 600;
-          margin-bottom: 0.25rem;
+          font-size: 0.8rem;
+          line-height: 1.2;
         }
         .town-vp {
           color: var(--accent);
-          font-size: 0.9rem;
-          margin-bottom: 0.5rem;
+          font-size: 0.8rem;
         }
         .town-cost {
           display: flex;
           flex-wrap: wrap;
-          gap: 0.35rem;
+          gap: 0.25rem;
         }
         .town-cost .small {
-          padding: 0.35rem 0.6rem;
-          font-size: 0.8rem;
+          padding: 0.25rem 0.4rem;
+          font-size: 0.7rem;
         }
         .town-cost .small.selected {
           border-color: var(--accent);

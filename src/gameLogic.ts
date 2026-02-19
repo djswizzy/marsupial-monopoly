@@ -1,6 +1,11 @@
 import type { GameState, Player, Commodity, Market, ProductionCard } from './types';
 import { createProductionDeck, createBuildingTiles, RAILROADS, TOWNS } from './data/cards';
 
+/** Deep clone game state so it can be stored for undo without being mutated by subsequent actions. */
+export function cloneGameState(state: GameState): GameState {
+  return JSON.parse(JSON.stringify(state));
+}
+
 const COMMODITIES: Commodity[] = ['wheat', 'wood', 'iron', 'coal', 'goods', 'luxury'];
 
 export const COMMODITY_PRICE_MIN: Record<Commodity, number> = {
@@ -98,7 +103,29 @@ export function initGame(numPlayers: number, names: string[]): GameState {
   auctionBids: [],
   auctionPassed: [],
   numPlayers,
+  actionTakenThisTurn: false,
+  pendingDrawCount: 0,
 };
+}
+
+function drawOneCard(state: GameState): GameState {
+  const s = { ...state, players: state.players.map(x => ({ ...x, hand: [...x.hand] })) };
+  const p = s.players[s.currentPlayerIndex];
+  let deck = [...s.productionDeck];
+  let discard = [...s.productionDiscard];
+  let card: ProductionCard | null = null;
+  if (deck.length > 0) {
+    card = deck.pop()!;
+  } else if (discard.length > 0) {
+    deck = shuffle(discard);
+    discard = [];
+    card = deck.pop()!;
+  }
+  if (!card) return state;
+  s.productionDeck = deck;
+  s.productionDiscard = discard;
+  p.hand = [...p.hand, card];
+  return s;
 }
 
 export function getMaxProduction(player: Player): number {
@@ -175,23 +202,9 @@ export function actionProduction(state: GameState, cardIndex: number, commoditie
 
   p.hand = p.hand.filter((_, i) => i !== cardIndex);
   s.productionDiscard = [...s.productionDiscard, card];
-  if (s.productionDeck.length > 0) {
-    const drawn = s.productionDeck.pop()!;
-    p.hand.push(drawn);
-  } else if (s.productionDiscard.length > 0) {
-    s.productionDeck = shuffle([...s.productionDiscard]);
-    s.productionDiscard = [];
-    const drawn = s.productionDeck.pop()!;
-    p.hand.push(drawn);
-  }
-
-  const maxStorage = getMaxStorage(p);
-  const total = totalCommodities(p.commodities);
-  if (total > maxStorage) {
-    s.phase = 'discardDown';
-    return s;
-  }
-  return nextTurn(s);
+  s.actionTakenThisTurn = true;
+  s.pendingDrawCount = (state.pendingDrawCount ?? 0) + 1;
+  return s;
 }
 
 export function actionDiscard(state: GameState, commodity: Commodity): GameState {
@@ -205,7 +218,6 @@ export function actionDiscard(state: GameState, commodity: Commodity): GameState
   const total = totalCommodities(p.commodities);
   if (total <= maxStorage) {
     s.phase = 'playing';
-    return nextTurn(s);
   }
   return s;
 }
@@ -226,7 +238,7 @@ export function actionSell(state: GameState, commodity: Commodity, quantity: num
   p.money += price * sell;
   s.market[commodity] = Math.max(COMMODITY_PRICE_MIN[commodity], price - sell);
 
-  return nextTurn(s);
+  return s;
 }
 
 export function startAuction(state: GameState, railroadIndex: number): GameState {
@@ -242,6 +254,7 @@ export function startAuction(state: GameState, railroadIndex: number): GameState
   s.auctionStarterIndex = starter;
   s.auctionBids = s.players.map((_, i) => (i === starter ? card.minBid : 0));
   s.auctionPassed = s.players.map(() => false);
+  s.actionTakenThisTurn = true;
   return s;
 }
 
@@ -293,9 +306,8 @@ function nextAuctionTurn(s: GameState): GameState {
     const auctionStarter = s.auctionStarterIndex;
     if (winner >= 0 && winner !== auctionStarter) {
       s.currentPlayerIndex = auctionStarter;
-      return s;
     }
-    return nextTurn(s);
+    return s;
   }
   let next = (s.currentPlayerIndex + 1) % s.numPlayers;
   while (s.auctionPassed[next]) next = (next + 1) % s.numPlayers;
@@ -317,7 +329,8 @@ export function actionBuyBuilding(state: GameState, buildingIndex: number): Game
   if (s.buildingStack.length > 0) {
     s.buildingOffer.push(s.buildingStack.shift()!);
   }
-  return nextTurn(s);
+  s.actionTakenThisTurn = true;
+  return s;
 }
 
 export function actionBuyTown(state: GameState, useSpecific: boolean): GameState {
@@ -347,15 +360,33 @@ export function actionBuyTown(state: GameState, useSpecific: boolean): GameState
 
   p.towns = [...p.towns, town];
   s.currentTown = s.townDeck.shift() ?? null;
-  return nextTurn(s);
+  s.actionTakenThisTurn = true;
+  return s;
 }
 
-function nextTurn(s: GameState): GameState {
+/** Advance to the next player. Call only when the current player explicitly ends their turn. Replenishes hand (pending draws) and checks discard-down before advancing. */
+export function actionEndTurn(state: GameState): GameState {
+  let s = { ...state, players: state.players.map(x => ({ ...x, hand: [...x.hand] })) };
   const railroadsGone = s.railroadDeck.length === 0 && s.railroadOffer.length === 0;
   const townsGone = s.townDeck.length === 0 && s.currentTown === null;
   if (railroadsGone || townsGone) return endGame(s);
-  const next = (s.currentPlayerIndex + 1) % s.numPlayers;
-  s.currentPlayerIndex = next;
+
+  const toDraw = s.pendingDrawCount ?? 0;
+  s.pendingDrawCount = 0;
+  for (let i = 0; i < toDraw; i++) {
+    s = drawOneCard(s);
+  }
+
+  const p = s.players[s.currentPlayerIndex];
+  const total = totalCommodities(p.commodities);
+  const maxStorage = getMaxStorage(p);
+  if (total > maxStorage) {
+    s.phase = 'discardDown';
+    return s;
+  }
+
+  s.currentPlayerIndex = (s.currentPlayerIndex + 1) % s.numPlayers;
+  s.actionTakenThisTurn = false;
   return s;
 }
 
@@ -366,7 +397,9 @@ function endGame(s: GameState): GameState {
 
 export function computeScores(state: GameState): { playerIndex: number; vp: number; money: number }[] {
   return state.players.map((p, i) => {
+    // Towns: printed VP on each; railroads: sum of each card's VP
     let vp = p.towns.reduce((s, t) => s + t.vp, 0) + p.railroads.reduce((s, r) => s + r.vp, 0);
+    // +2 per town–railroad pair (town paired with a railroad at end of game)
     const pairs = Math.min(p.towns.length, p.railroads.length);
     vp += pairs * 2;
     vp += p.buildings.length;

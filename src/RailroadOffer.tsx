@@ -2,16 +2,26 @@ import type { RailroadCard as RRCard } from './types'
 
 type Props = {
   railroads: (RRCard | null)[]
-  onStartAuction: (index: number) => void
+  onSelect: (index: number) => void
+  onConfirmStartAuction: (index: number) => void
   disabled: boolean
   currentPlayerMoney: number
   selectedRailroadIndex?: number | null
+  hideTitle?: boolean
 }
 
-export function RailroadOffer({ railroads, onStartAuction, disabled, currentPlayerMoney, selectedRailroadIndex = null }: Props) {
+function railroadVpProgression(vp: number): string {
+  const one = vp
+  const two = 2 * vp + 1
+  const three = 3 * vp + 3
+  const four = 4 * vp + 7
+  return `${one}:${two}:${three}:${four}`
+}
+
+export function RailroadOffer({ railroads, onSelect, onConfirmStartAuction, disabled, currentPlayerMoney, selectedRailroadIndex = null, hideTitle = false }: Props) {
   return (
     <div className="railroad-offer">
-      <h3>Railroads (auction)</h3>
+      {!hideTitle && <h3>Railroads (auction)</h3>}
       <div className="railroad-cards">
         {railroads.map((rr, i) => (
           rr ? (
@@ -19,12 +29,17 @@ export function RailroadOffer({ railroads, onStartAuction, disabled, currentPlay
               key={rr.id}
               type="button"
               className={`railroad-card card ${selectedRailroadIndex === i ? 'selected' : ''}`}
-              onClick={() => onStartAuction(i)}
+              onClick={() => {
+                const isSelected = selectedRailroadIndex === i
+                const canAfford = currentPlayerMoney >= rr.minBid
+                if (isSelected && canAfford) onConfirmStartAuction(i)
+                else onSelect(i)
+              }}
               disabled={disabled || currentPlayerMoney < rr.minBid}
             >
               <div className="rr-name">{rr.name}</div>
               <div className="rr-min">Min ${rr.minBid}</div>
-              <div className="rr-vp">{rr.vp} VP each</div>
+              <div className="rr-vp" title="VP for 1, 2, 3, 4 cards">{railroadVpProgression(rr.vp)}</div>
             </button>
           ) : (
             <div key={`empty-${i}`} className="railroad-card empty">—</div>
@@ -47,13 +62,16 @@ export function RailroadOffer({ railroads, onStartAuction, disabled, currentPlay
           flex-wrap: wrap;
         }
         .railroad-card {
-          min-width: 120px;
-          padding: 0.75rem;
+          width: 100px;
+          aspect-ratio: 100 / 130;
+          padding: 0.5rem;
           text-align: center;
           display: flex;
           flex-direction: column;
-          gap: 0.25rem;
+          gap: 0.2rem;
+          justify-content: center;
           transition: transform 0.2s ease, border-color 0.15s, box-shadow 0.15s;
+          box-sizing: border-box;
         }
         .railroad-card button.railroad-card:hover:not(:disabled) {
           border-color: var(--accent);
@@ -61,9 +79,10 @@ export function RailroadOffer({ railroads, onStartAuction, disabled, currentPlay
         .railroad-card .rr-name {
           font-weight: 600;
           font-size: 0.95rem;
+          line-height: 1.2;
         }
         .railroad-card .rr-min {
-          font-size: 0.85rem;
+          font-size: 0.9rem;
           color: var(--text-muted);
         }
         .railroad-card .rr-vp {

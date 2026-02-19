@@ -2,23 +2,28 @@ import type { BuildingTile } from './types'
 
 type Props = {
   buildings: BuildingTile[]
-  onBuy: (index: number) => void
+  onSelect: (index: number) => void
+  onConfirmBuy: (index: number) => void
   currentPlayerMoney: number
   selectedBuildingIndex?: number | null
+  selectionDisabled?: boolean
 }
 
-export function BuildingOffer({ buildings, onBuy, currentPlayerMoney, selectedBuildingIndex = null }: Props) {
+export function BuildingOffer({ buildings, onSelect, onConfirmBuy, currentPlayerMoney, selectedBuildingIndex = null, selectionDisabled = false }: Props) {
   return (
     <div className="building-offer">
       <h3>Buildings</h3>
       <div className="building-tiles">
-        {buildings.map((b, i) => (
+        {buildings.map((b, i) => {
+          const isSelected = selectedBuildingIndex === i
+          const canAfford = currentPlayerMoney >= b.cost
+          return (
           <button
             key={b.id}
             type="button"
-            className={`building-tile card ${selectedBuildingIndex === i ? 'selected' : ''}`}
-            onClick={() => onBuy(i)}
-            disabled={currentPlayerMoney < b.cost}
+            className={`building-tile card ${isSelected ? 'selected' : ''}`}
+            onClick={() => (isSelected && canAfford ? onConfirmBuy(i) : onSelect(i))}
+            disabled={selectionDisabled || !canAfford}
           >
             <div className="b-content">
               <div className="b-name">{b.name}</div>
@@ -26,7 +31,8 @@ export function BuildingOffer({ buildings, onBuy, currentPlayerMoney, selectedBu
             </div>
             <div className="b-cost" aria-label={`Cost ${b.cost}`}>${b.cost}</div>
           </button>
-        ))}
+          )
+        })}
       </div>
       <style>{`
         .building-offer h3 {

@@ -79,4 +79,8 @@ export interface GameState {
   auctionPassed: boolean[];
   numPlayers: number;
   suddenDeathWinner?: number;
+  /** True after the current player has performed their one action this turn (resets on actionEndTurn). */
+  actionTakenThisTurn?: boolean;
+  /** Number of production cards to draw for current player when they end their turn. */
+  pendingDrawCount?: number;
 }

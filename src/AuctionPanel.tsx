@@ -5,9 +5,10 @@ type Props = {
   state: GameState
   onBid: (amount: number) => void
   onPass: () => void
+  onClose: () => void
 }
 
-export function AuctionPanel({ state, onBid, onPass }: Props) {
+export function AuctionPanel({ state, onBid, onPass, onClose }: Props) {
   const [input, setInput] = useState('')
   const rr = state.auctionRailroad!
   const current = state.players[state.currentPlayerIndex]
@@ -26,7 +27,10 @@ export function AuctionPanel({ state, onBid, onPass }: Props) {
   return (
     <div className="auction-overlay">
       <div className="auction-panel card">
-        <h2>Auction: {rr.name}</h2>
+        <div className="auction-panel-header">
+          <h2>Auction: {rr.name}</h2>
+          <button type="button" className="auction-close" onClick={onClose} title="Close">×</button>
+        </div>
         <p>Min bid ${rr.minBid} · {rr.vp} VP</p>
         <p className="current-high">
           Current high: ${Math.max(...state.auctionBids)} by{' '}
@@ -75,8 +79,26 @@ export function AuctionPanel({ state, onBid, onPass }: Props) {
           max-width: 400px;
           padding: 1.5rem;
         }
-        .auction-panel h2 {
-          margin-bottom: 0.25rem;
+        .auction-panel-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 0.5rem;
+        }
+        .auction-panel-header h2 {
+          margin: 0 0 0.25rem 0;
+        }
+        .auction-close {
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          font-size: 1.5rem;
+          line-height: 1;
+          cursor: pointer;
+          padding: 0 0.25rem;
+        }
+        .auction-close:hover {
+          color: var(--text);
         }
         .auction-panel p {
           margin: 0.5rem 0;

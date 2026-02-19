@@ -5,8 +5,10 @@ import { getProductionList } from './gameLogic'
 type Props = {
   hand: ProductionCard[]
   onProduce: (cardIndex: number) => void
+  onPlayCard: (cardIndex: number) => void
   onToggleProductionIndex: (cardIndex: number, index: number) => void
   disabled: boolean
+  canPlaySelected: boolean
   commodities: Partial<Record<string, number>>
   buildings: BuildingTile[]
   selectedCardIndex?: number | null
@@ -17,8 +19,10 @@ type Props = {
 export function PlayerHand({
   hand,
   onProduce,
+  onPlayCard,
   onToggleProductionIndex,
   disabled,
+  canPlaySelected,
   commodities: _commodities,
   buildings: _buildings,
   selectedCardIndex = null,
@@ -27,11 +31,12 @@ export function PlayerHand({
 }: Props) {
   return (
     <div className="player-hand card">
-      <h3>Your hand — choose a card, then pick {maxProduction} from the bottom</h3>
+      <h3>Your hand — click a card to play it (pick {maxProduction} from the bottom when needed)</h3>
       <div className="hand-cards">
         {hand.map((card, i) => {
           const productionList = getProductionList(card)
           const isSelected = selectedCardIndex === i
+          const playOnClick = isSelected && canPlaySelected
           return (
             <div
               key={card.id}
@@ -40,7 +45,7 @@ export function PlayerHand({
               <button
                 type="button"
                 className="prod-card-top"
-                onClick={() => onProduce(i)}
+                onClick={() => (playOnClick ? onPlayCard(i) : onProduce(i))}
                 disabled={disabled}
               >
                 <div className="prod-card-emojis">
@@ -118,6 +123,7 @@ export function PlayerHand({
         }
         .prod-card:hover {
           border-color: var(--accent);
+          transform: translateY(-8px);
         }
         .prod-card.selected,
         .prod-card.selected:hover {
