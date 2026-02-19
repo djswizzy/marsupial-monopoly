@@ -13,7 +13,6 @@ type Props = {
 }
 
 const API_BASE = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001')
-const SOCKET_URL = API_BASE.replace(/\/api.*$/, '') || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001')
 
 export function OnlineGameRoom({
   roomCode,
@@ -23,10 +22,11 @@ export function OnlineGameRoom({
   onLeave,
 }: Props) {
   const [state, setState] = useState<GameState>(initialState)
-  const ioRef = useRef<ReturnType<typeof import('socket.io-client').io> | null>(null)
+  const pollingRef = useRef<number | null>(null)
+  const lastStateHashRef = useRef<string>('')
 
   const dispatch = useCallback(
-    (action: GameAction, applyFirst?: GameAction) => {
+    async (action: GameAction, applyFirst?: GameAction) => {
       const { type, ...payload } = action as unknown as Record<string, unknown>
       const applyFirstPayload = applyFirst
         ? (() => {
@@ -34,26 +34,59 @@ export function OnlineGameRoom({
             return { type: tf, payload: pf }
           })()
         : undefined
-      ioRef.current?.emit('action', {
-        roomCode,
-        playerId,
-        type,
-        payload,
-        applyFirst: applyFirstPayload,
-      })
+
+      try {
+        const res = await fetch(`${API_BASE}/api/room/${roomCode}/action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            playerId,
+            type,
+            payload,
+            applyFirst: applyFirstPayload,
+          }),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          console.error('Action failed:', data.error)
+          return
+        }
+        const newState = await res.json()
+        setState(newState)
+      } catch (err) {
+        console.error('Action error:', err)
+      }
     },
     [roomCode, playerId]
   )
 
   useEffect(() => {
-    import('socket.io-client').then(({ io }) => {
-      const sock = io(SOCKET_URL || 'http://localhost:3001')
-      ioRef.current = sock
-      sock.emit('join-room', { roomCode, playerId })
-      sock.on('game-state', (next: GameState) => setState(next))
-    })
+    let mounted = true
+
+    async function pollGameState() {
+      try {
+        const res = await fetch(`${API_BASE}/api/room/${roomCode}?playerId=${playerId}`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.status === 'playing' && data.gameState) {
+          const stateHash = JSON.stringify(data.gameState)
+          if (stateHash !== lastStateHashRef.current && mounted) {
+            lastStateHashRef.current = stateHash
+            setState(data.gameState)
+          }
+        }
+      } catch (err) {
+        // Silently handle polling errors
+      }
+    }
+
+    pollGameState()
+    const interval = setInterval(pollGameState, 1000) // Poll every second during game
+    pollingRef.current = interval as unknown as number
+
     return () => {
-      ioRef.current?.disconnect()
+      mounted = false
+      if (pollingRef.current) clearInterval(pollingRef.current)
     }
   }, [roomCode, playerId])
 

@@ -22,37 +22,58 @@ export function RoomWaitingScreen({
 }: Props) {
   const [players, setPlayers] = useState<{ name: string; index: number }[]>([])
   const [error, setError] = useState('')
-  const ioRef = useRef<ReturnType<typeof import('socket.io-client').io> | null>(null)
+  const pollingRef = useRef<number | null>(null)
 
   useEffect(() => {
     let mounted = true
-    import('socket.io-client').then(({ io }) => {
-      const sock = io(API_BASE.replace(/\/api.*$/, ''))
-      ioRef.current = sock
-      sock.emit('join-room', { roomCode, playerId })
-      sock.on('room-update', (data: { players: { name: string; index: number }[]; status?: string; gameState?: GameState }) => {
+
+    async function pollRoom() {
+      try {
+        const res = await fetch(`${API_BASE}/api/room/${roomCode}?playerId=${playerId}`)
+        if (!res.ok) {
+          if (mounted) setError('Failed to fetch room status')
+          return
+        }
+        const data = await res.json()
         if (mounted) {
-          setPlayers(data.players)
+          setPlayers(data.players || [])
           if (data.status === 'playing' && data.gameState) {
             onGameStart(data.gameState, roomCode, playerId, playerIndex)
+            return
           }
         }
-      })
-      sock.on('game-state', (state: GameState) => {
-        if (mounted) onGameStart(state, roomCode, playerId, playerIndex)
-      })
-      sock.on('error', (data: { message: string }) => {
-        if (mounted) setError(data.message)
-      })
-    })
+      } catch (err) {
+        if (mounted) setError((err as Error).message)
+      }
+    }
+
+    pollRoom()
+    const interval = setInterval(pollRoom, 2000) // Poll every 2 seconds
+    pollingRef.current = interval as unknown as number
+
     return () => {
       mounted = false
-      ioRef.current?.disconnect()
+      if (pollingRef.current) clearInterval(pollingRef.current)
     }
   }, [roomCode, playerId, playerIndex, onGameStart])
 
-  function handleStart() {
-    ioRef.current?.emit('start-game', { roomCode, playerId })
+  async function handleStart() {
+    try {
+      const res = await fetch(`${API_BASE}/api/room/${roomCode}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to start game')
+        return
+      }
+      const gameState = await res.json()
+      onGameStart(gameState, roomCode, playerId, playerIndex)
+    } catch (err) {
+      setError((err as Error).message)
+    }
   }
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}?room=${roomCode}` : ''
