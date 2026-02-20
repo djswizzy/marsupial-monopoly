@@ -126,7 +126,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
   // Reset Trading Floor purchase when leaving production pending action
   useEffect(() => {
     if (pendingAction?.type !== 'production') setTradingFloorPurchase(null)
-  }, [pendingAction?.type, pendingAction?.cardIndex])
+  }, [pendingAction?.type, pendingAction?.type === 'production' ? pendingAction.cardIndex : undefined])
 
   // Clear turn actions when turn changes
   useEffect(() => {
