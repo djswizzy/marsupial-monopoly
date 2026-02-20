@@ -134,7 +134,7 @@ const BUILDING_TILES: BuildingTile[] = [
   { id: 'lumber-wheat-trading-firm', name: 'Lumber/ Wheat Trading Firm', cost: 10, description: 'You get $1/ unit of Wood or Wheat that is sold by any player.', tradingFirmCommodities: ['wood', 'wheat'] },
   { id: 'goods-luxury-trading-firm', name: 'Goods Luxury Trading Firm', cost: 10, description: 'You get $1/ unit of Goods or Luxury that is sold by any player.', tradingFirmCommodities: ['goods', 'luxury'] },
   { id: 'coal-iron-trading-firm', name: 'Coal / Iron Trading Firm', cost: 10, description: 'You get $1/ unit of Coal or Iron that is sold by any player.', tradingFirmCommodities: ['coal', 'iron'] },
-  { id: 'warehouse-x2', name: 'Warehouse (x2)', cost: 10, description: 'You may store an extra 3 Commodity Tokens.', storageBonus: 3 },
+  { id: 'warehouse-x2', name: 'Warehouse', cost: 10, description: 'You may store an extra 3 Commodity Tokens.', storageBonus: 3 },
   { id: 'construction-company', name: 'Construction Company', cost: 20, description: 'You may perform two Purchase Building actions in one turn.', extraBuildingPurchase: true },
   { id: 'freight-company', name: 'Freight Company', cost: 25, description: 'You may sell 2 Commodities in one turn.', extraSellAction: true },
   { id: 'governors-mansion', name: "Governor's Mansion", cost: 30, description: 'Each Town Card you own is worth +1 VP at the end of the game.', vpPerTown: 1 },
@@ -145,19 +145,31 @@ const BUILDING_TILES: BuildingTile[] = [
   { id: 'black-market', name: 'Black Market', cost: 30, description: 'Your hand limit of Price & Production cards is increased to 5.', handSize: 5 },
   { id: 'brick-works', name: 'Brick Works', cost: 25, description: 'You may build Towns with one fewer Commodity.', townCostReduce: 1 },
   { id: 'mayors-office', name: "Mayor's Office", cost: 30, description: 'Each Building you own is worth +1 VP at the end of the game.', vpPerBuilding: 1 },
-  { id: 'trading-floor', name: 'Trading Floor', cost: 15, description: "When using the 'Produce' action, you may also buy any number of one Commodity currently owned by one other player at the current market price (before the price is affected by the Price & Production card). They may not refuse." },
+  { id: 'trading-floor', name: 'Trading Floor', cost: 15, description: "When using the 'Produce' action, you may also buy any number of one Commodity currently owned by one other player at the current market price (before the price is affected by the Price & Production card). They may not refuse.", tradingFloor: true },
   { id: 'export-company', name: 'Export Company', cost: 30, description: "When selling a Commodity, you may increase the price of that Commodity by $3 before selling. Maximum Price is limited to the value shown on the board for that Commodity.", sellPriceBonus: 3 },
   { id: 'cottage-industry-p', name: 'Cottage Industry (p)', cost: 30, description: 'You may produce up to four (4) of the Commodity Tokens shown in the Production area of a Price/ Production Card.', productionLimit: 4, bpTag: true },
-  { id: 'factory-x2-p', name: 'Factory (x2) (p)', cost: 40, description: 'You may produce up to five (5) of the Commodity Tokens shown in the Production area of a Price/ Production Card.', productionLimit: 5, bpTag: true },
+  { id: 'factory-x2-p', name: 'Factory (p)', cost: 40, description: 'You may produce up to five (5) of the Commodity Tokens shown in the Production area of a Price/ Production Card.', productionLimit: 5, bpTag: true },
 ];
 
 const B_LEVEL1_TILES = BUILDING_TILES.filter(t => t.bpLevel === 1 && t.bpUpgradeToId);
 const NON_B_TILES = BUILDING_TILES.filter(t => !t.bpTag);
 
+const DOUBLE_POOL_IDS = ['warehouse-x2'];
+
 export function createBuildingDeckForGame(): { initialOffer: BuildingTile[]; buildingStack: BuildingTile[] } {
   const bPool = shuffle([...B_LEVEL1_TILES]);
   const initialOffer = bPool.slice(0, 4);
-  const buildingStack = shuffle([...NON_B_TILES]);
+  const stack: BuildingTile[] = [];
+  for (const t of NON_B_TILES) {
+    stack.push(t);
+    if (DOUBLE_POOL_IDS.includes(t.id)) stack.push(t);
+  }
+  const factoryTile = getBuildingTileById('factory-x2-p');
+  if (factoryTile) {
+    stack.push(factoryTile);
+    stack.push(factoryTile);
+  }
+  const buildingStack = shuffle(stack);
   return { initialOffer, buildingStack };
 }
 

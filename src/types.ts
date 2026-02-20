@@ -66,6 +66,8 @@ export interface BuildingTile {
   extraBuildingPurchase?: boolean;
   /** When selling, add this to price per unit (capped at board max). */
   sellPriceBonus?: number;
+  /** When producing, may buy commodities from one other player at market price (before card price increase). */
+  tradingFloor?: boolean;
 }
 
 export interface Player {

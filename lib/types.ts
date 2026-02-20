@@ -50,6 +50,7 @@ export interface BuildingTile {
   extraSellAction?: boolean;
   extraBuildingPurchase?: boolean;
   sellPriceBonus?: number;
+  tradingFloor?: boolean;
 }
 
 export interface Player {

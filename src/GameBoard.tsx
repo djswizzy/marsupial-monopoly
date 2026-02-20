@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { flushSync } from 'react-dom'
-import type { GameState, BuildingTile } from './types'
+import type { GameState, BuildingTile, Commodity } from './types'
 import type { GameAction } from './gameLogic'
 import { COMMODITY_NAMES, COMMODITY_EMOJI, getBuildingTileById } from './data/cards'
-import { COMMODITIES, actionProduction, actionBuyTown, actionBuyBuilding, actionUpgradeBBuilding, startAuction, placeBid, passAuction, actionSell, actionDiscard, actionEndTurn, cloneGameState, getMaxProduction, getProductionList } from './gameLogic'
+import { COMMODITIES, COMMODITY_PRICE_MAX, actionProduction, actionBuyTown, actionBuyBuilding, actionUpgradeBBuilding, actionSetActiveBpBuilding, startAuction, placeBid, passAuction, actionSell, actionDiscard, actionEndTurn, cloneGameState, getMaxProduction, getProductionList } from './gameLogic'
 import { MarketStrip } from './MarketStrip'
 import { DiscardDownPanel } from './DiscardDownPanel'
 import { RailroadOffer, formatRailroadVpSchedule } from './RailroadOffer'
@@ -14,6 +14,7 @@ import { AuctionPanel } from './AuctionPanel'
 import { SellPanel } from './SellPanel'
 import { GameLog, getPlayerColor, type LogEntry } from './GameLog'
 import { PlayerPanel } from './PlayerPanel'
+import { DevPanel } from './DevPanel'
 import type { PendingAction } from './ActionBar'
 
 type Props = {
@@ -45,12 +46,16 @@ function formatActionMessage(action: GameAction, state: GameState, prevState?: G
       if (!card) return 'Played production card'
       const commodities = action.commoditiesToTake || []
       const prodList = commodities.length > 0 
-        ? commodities.map(c => COMMODITY_NAMES[c]).join(', ')
+        ? commodities.map((c: Commodity) => COMMODITY_NAMES[c]).join(', ')
         : 'commodities'
       const priceList = card.priceIncrease.length > 0
-        ? card.priceIncrease.map(c => COMMODITY_NAMES[c]).join(', ')
+        ? card.priceIncrease.map((c: Commodity) => COMMODITY_NAMES[c]).join(', ')
         : '—'
-      return `Played production card: took ${prodList}, raised ${priceList} by $1`
+      const tf = action.tradingFloorPurchase
+      const tfMsg = tf && tf.quantity > 0 && useState.players[tf.fromPlayerIndex]
+        ? `; bought ${tf.quantity} ${COMMODITY_NAMES[tf.commodity]} from ${useState.players[tf.fromPlayerIndex].name} (Trading Floor)`
+        : ''
+      return `Played production card: took ${prodList}, raised ${priceList} by $1${tfMsg}`
     }
     case 'sell':
       return `Sold ${action.quantity} ${COMMODITY_NAMES[action.commodity]}`
@@ -95,6 +100,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
   const [infoBuilding, setInfoBuilding] = useState<BuildingTile | null>(null)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [productionSelection, setProductionSelection] = useState<number[]>([])
+  const [tradingFloorPurchase, setTradingFloorPurchase] = useState<{ fromPlayerIndex: number; commodity: Commodity; quantity: number } | null>(null)
   const [stateBeforeAction, setStateBeforeAction] = useState<GameState | null>(null)
   const [stateBeforeAuction, setStateBeforeAuction] = useState<GameState | null>(null)
   const [logEntries, setLogEntries] = useState<LogEntry[]>([])
@@ -114,6 +120,11 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
     }
     prevStateRef.current = state
   }, [state.phase])
+
+  // Reset Trading Floor purchase when leaving production pending action
+  useEffect(() => {
+    if (pendingAction?.type !== 'production') setTradingFloorPurchase(null)
+  }, [pendingAction?.type, pendingAction?.cardIndex])
 
   // Clear turn actions when turn changes
   useEffect(() => {
@@ -242,7 +253,8 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
       productionSelection.length === maxProduction
         ? productionSelection.map(i => getProductionList(card)[i])
         : undefined
-    const action: GameAction = { type: 'production', cardIndex, commoditiesToTake }
+    const tf = tradingFloorPurchase && tradingFloorPurchase.quantity > 0 ? tradingFloorPurchase : undefined
+    const action: GameAction = { type: 'production', cardIndex, commoditiesToTake, tradingFloorPurchase: tf }
     if (dispatch) {
       addTurnAction(action, state.currentPlayerIndex)
       dispatch(action)
@@ -251,13 +263,14 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
       addTurnAction(action, state.currentPlayerIndex)
       const nextState =
         productionSelection.length === maxProduction
-          ? actionProduction(state, cardIndex, productionSelection.map(i => getProductionList(card)[i]))
-          : actionProduction(state, cardIndex)
+          ? actionProduction(state, cardIndex, productionSelection.map(i => getProductionList(card)[i]), tf)
+          : actionProduction(state, cardIndex, undefined, tf)
       prevStateRef.current = state
       setState(nextState)
     }
     setPendingAction(null)
     setProductionSelection([])
+    setTradingFloorPurchase(null)
   }
 
   function endTurn() {
@@ -324,6 +337,13 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
 
   return (
     <div className="game-board">
+      {!dispatch && (
+        <DevPanel
+          state={state}
+          setState={setState}
+          playerIndex={state.currentPlayerIndex}
+        />
+      )}
       <div className="game-body">
         <div className="game-main">
           <section className="market-section">
@@ -390,6 +410,82 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
               </section>
             </div>
             <section className="player-area">
+              {pendingAction?.type === 'production' && me.buildings.some(b => b.tradingFloor) && (() => {
+                const myIdx = isOnline ? playerIndex! : state.currentPlayerIndex
+                const otherPlayers = state.players
+                  .map((p, i) => ({ index: i, name: p.name }))
+                  .filter((_, i) => i !== myIdx)
+                if (otherPlayers.length === 0) return null
+                const fromIdx = tradingFloorPurchase != null && otherPlayers.some(op => op.index === tradingFloorPurchase.fromPlayerIndex)
+                  ? tradingFloorPurchase.fromPlayerIndex
+                  : otherPlayers[0].index
+                const fromPlayer = state.players[fromIdx]
+                const fromCommodities = COMMODITIES.filter(c => (fromPlayer.commodities[c] ?? 0) > 0)
+                const selectedCommodity = tradingFloorPurchase?.commodity && fromCommodities.includes(tradingFloorPurchase.commodity)
+                  ? tradingFloorPurchase.commodity
+                  : fromCommodities[0]
+                const maxQty = selectedCommodity ? (fromPlayer.commodities[selectedCommodity] ?? 0) : 0
+                const price = selectedCommodity ? state.market[selectedCommodity] : 0
+                const qty = tradingFloorPurchase?.fromPlayerIndex === fromIdx ? Math.min(tradingFloorPurchase.quantity, maxQty) : 0
+                return (
+                  <div className="trading-floor-panel card">
+                    <h4>Trading Floor (optional)</h4>
+                    <p className="trading-floor-desc">Buy commodities from one other player at market price before the card&apos;s price increase.</p>
+                    <div className="trading-floor-row">
+                      <label>
+                        From:{' '}
+                        <select
+                          value={tradingFloorPurchase?.fromPlayerIndex ?? otherPlayers[0].index}
+                          onChange={(e) => {
+                            const i = Number(e.target.value)
+                            const p = state.players[i]
+                            const firstC = COMMODITIES.find(c => (p.commodities[c] ?? 0) > 0)
+                            setTradingFloorPurchase({ fromPlayerIndex: i, commodity: firstC ?? 'wheat', quantity: 0 })
+                          }}
+                        >
+                          {otherPlayers.map(({ index, name }) => (
+                            <option key={index} value={index}>{name}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Commodity:{' '}
+                        <select
+                          value={selectedCommodity ?? ''}
+                          onChange={(e) => {
+                            const c = e.target.value as Commodity
+                            const maxForC = state.players[fromIdx].commodities[c] ?? 0
+                            setTradingFloorPurchase({ fromPlayerIndex: fromIdx, commodity: c, quantity: Math.min(qty, maxForC) })
+                          }}
+                          disabled={fromCommodities.length === 0}
+                        >
+                          {fromCommodities.map(c => (
+                            <option key={c} value={c}>{COMMODITY_NAMES[c]} ({(fromPlayer.commodities[c] ?? 0)})</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Qty:{' '}
+                        <input
+                          type="number"
+                          min={0}
+                          max={maxQty}
+                          value={qty}
+                          onChange={(e) => {
+                            const v = Math.max(0, Math.min(maxQty, parseInt(e.target.value, 10) || 0))
+                            setTradingFloorPurchase({ fromPlayerIndex: fromIdx, commodity: selectedCommodity ?? 'wheat', quantity: v })
+                          }}
+                        />
+                        {selectedCommodity && maxQty > 0 && (
+                          <span className="trading-floor-cost">
+                            {qty > 0 ? ` = $${price * qty}` : ''}
+                          </span>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                )
+              })()}
               <PlayerHand
                 hand={me.hand}
                 onProduce={(cardIndex) => togglePending({ type: 'production', cardIndex })}
@@ -456,29 +552,53 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
             <h3 className="sidebar-section-title">Your buildings</h3>
             <ul className="sidebar-buildings">
               {me.buildings.map(b => (
-                <li key={b.id} className="sidebar-building" title={b.description}>
+                <li key={b.id} className="sidebar-building" title={b.name}>
                   <div className="sidebar-building-text">
                     <span className="sidebar-building-name">{b.name}</span>
-                    <span className="sidebar-building-desc">{b.description}</span>
                   </div>
                   <div className="sidebar-building-actions">
                     {b.bpUpgradeToId != null && b.upgradeCost != null && isMyTurn && !actionTakenThisTurn && current.money >= b.upgradeCost && (
+                      <div className="sidebar-building-actions-row">
+                        <button
+                          type="button"
+                          className="sidebar-building-upgrade"
+                          onClick={() => upgradeBBuilding(b.id)}
+                        >
+                          Upgrade ${b.upgradeCost}
+                        </button>
+                      </div>
+                    )}
+                    <div className="sidebar-building-actions-row">
+                      {me.buildings.filter(x => x.bpTag).length > 1 && b.bpTag && (
+                        (me.activeBpBuildingId === b.id) ? (
+                          <span className="sidebar-building-active">Active</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="sidebar-building-use-bp"
+                            onClick={() => {
+                              if (dispatch) {
+                                dispatch({ type: 'setActiveBpBuilding', buildingId: b.id })
+                              } else {
+                                setState(actionSetActiveBpBuilding(state, b.id))
+                              }
+                            }}
+                            disabled={!isMyTurn}
+                            title="Use this B/P building this turn"
+                          >
+                            Use
+                          </button>
+                        )
+                      )}
                       <button
                         type="button"
-                        className="sidebar-building-upgrade"
-                        onClick={() => upgradeBBuilding(b.id)}
+                        className="sidebar-building-info"
+                        aria-label="Full effect"
+                        onClick={() => setInfoBuilding(b)}
                       >
-                        Upgrade ${b.upgradeCost}
+                        i
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      className="sidebar-building-info"
-                      aria-label="Full effect"
-                      onClick={() => setInfoBuilding(b)}
-                    >
-                      i
-                    </button>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -526,18 +646,26 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
         <SellPanel
           commodities={me.commodities}
           market={state.market}
-          onSell={(commodity, qty) => {
-            const action: GameAction = { type: 'sell', commodity, quantity: qty }
+          hasFreightCompany={me.buildings.some(b => b.extraSellAction)}
+          sellActionsThisTurn={state.sellActionsThisTurn ?? 0}
+          hasExportCompany={me.buildings.some(b => b.sellPriceBonus != null)}
+          exportBonusAmount={me.buildings.find(b => b.sellPriceBonus != null)?.sellPriceBonus ?? 3}
+          commodityPriceMax={COMMODITY_PRICE_MAX}
+          onSell={(commodity, qty, useExportCompany) => {
+            const action: GameAction = { type: 'sell', commodity, quantity: qty, useExportCompany }
             if (dispatch) {
               addTurnAction(action, state.currentPlayerIndex)
               dispatch(action)
+              const canSellAgain = me.buildings.some(b => b.extraSellAction) && (state.sellActionsThisTurn ?? 0) < 1
+              if (!canSellAgain) setShowSellPanel(false)
             } else {
               addTurnAction(action, state.currentPlayerIndex)
-              const nextState = actionSell(state, commodity, qty)
+              const nextState = actionSell(state, commodity, qty, useExportCompany)
               prevStateRef.current = state
               setState(nextState)
+              const canSellAgain = nextState.players[nextState.currentPlayerIndex].buildings.some((b: { extraSellAction?: boolean }) => b.extraSellAction) && (nextState.sellActionsThisTurn ?? 0) < 2
+              if (!canSellAgain) setShowSellPanel(false)
             }
-            setShowSellPanel(false)
           }}
           onClose={() => setShowSellPanel(false)}
         />
@@ -731,9 +859,15 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
         }
         .game-sidebar .sidebar-building-actions {
           display: flex;
-          align-items: center;
+          flex-direction: column;
+          align-items: flex-end;
           gap: 0.25rem;
           flex-shrink: 0;
+        }
+        .game-sidebar .sidebar-building-actions-row {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
         }
         .game-sidebar .sidebar-building-upgrade {
           font-size: 0.7rem;
@@ -748,6 +882,29 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
         .game-sidebar .sidebar-building-upgrade:hover {
           background: var(--accent);
           color: white;
+        }
+        .sidebar-building-active {
+          font-size: 0.7rem;
+          font-weight: 600;
+          color: var(--accent);
+        }
+        .sidebar-building-use-bp {
+          font-size: 0.7rem;
+          padding: 0.2rem 0.4rem;
+          border-radius: 3px;
+          border: 1px solid var(--border);
+          background: var(--surface3);
+          color: var(--text);
+          cursor: pointer;
+        }
+        .sidebar-building-use-bp:hover:not(:disabled) {
+          background: var(--accent);
+          color: white;
+          border-color: var(--accent);
+        }
+        .sidebar-building-use-bp:disabled {
+          opacity: 0.6;
+          cursor: default;
         }
         .game-sidebar .sidebar-item-name,
         .game-sidebar .sidebar-building-name {
@@ -885,6 +1042,46 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
         .player-area {
           flex: 1;
           min-width: 0;
+        }
+        .trading-floor-panel {
+          margin-bottom: 0.75rem;
+          padding: 0.75rem 1rem;
+        }
+        .trading-floor-panel h4 {
+          margin: 0 0 0.25rem;
+          font-size: 0.95rem;
+        }
+        .trading-floor-desc {
+          margin: 0 0 0.5rem;
+          font-size: 0.8rem;
+          color: var(--text-muted);
+        }
+        .trading-floor-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+          align-items: center;
+        }
+        .trading-floor-row label {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          font-size: 0.85rem;
+        }
+        .trading-floor-row select,
+        .trading-floor-row input[type="number"] {
+          padding: 0.25rem 0.4rem;
+          border-radius: 4px;
+          border: 1px solid var(--border);
+          font-size: 0.85rem;
+        }
+        .trading-floor-row input[type="number"] {
+          width: 3.5rem;
+        }
+        .trading-floor-cost {
+          font-size: 0.85rem;
+          color: var(--accent);
+          font-weight: 600;
         }
         .undo-button {
           width: 100%;

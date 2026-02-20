@@ -10,6 +10,7 @@ import {
   actionDiscard,
   actionBuyBuilding,
   actionUpgradeBBuilding,
+  actionSetActiveBpBuilding,
   actionBuyTown,
   startAuction,
   placeBid,
@@ -170,6 +171,8 @@ io.on('connection', (socket) => {
             return actionBuyBuilding(s, p.buildingIndex as number)
           case 'upgradeBBuilding':
             return actionUpgradeBBuilding(s, p.buildingId as string)
+          case 'setActiveBpBuilding':
+            return actionSetActiveBpBuilding(s, p.buildingId as string)
           case 'buyTown':
             return actionBuyTown(s, p.useSpecific as boolean)
           case 'startAuction':

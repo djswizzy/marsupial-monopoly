@@ -1,6 +1,6 @@
 import type { BuildingTile } from './types'
 
-/** Modal showing full building effect; render when building is non-null. */
+/** Modal showing full building effect; render when building is non-null. Always shows definition (e.g. when opened via "i" from Your buildings). */
 export function BuildingInfoModal({ building, onClose }: { building: BuildingTile | null; onClose: () => void }) {
   if (!building) return null
   return (

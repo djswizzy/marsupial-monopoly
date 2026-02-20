@@ -53,8 +53,8 @@ export function createProductionDeck(): ProductionCard[] {
   return shuffle(deck);
 }
 
-/** Railroad type template: 4 copies of each. vpSchedule = VP for 1st, 2nd, 3rd, 4th copy (totals: 4/9/15/23 etc). */
-const RAILROAD_TYPES: { typeId: string; name: string; minBid: number; vpSchedule: number[] }[] = [
+/** Railroad type template: 4 copies of each. vpSchedule = VP for 1st, 2nd, 3rd, 4th copy (totals: 4/9/15/23 etc). Exported for dev panel. */
+export const RAILROAD_TYPES: { typeId: string; name: string; minBid: number; vpSchedule: number[] }[] = [
   { typeId: 'top-dog', name: 'Top Dog', minBid: 6, vpSchedule: [4, 5, 6, 8] },           // 4 / 9 / 15 / 23
   { typeId: 'tycoon-railroad', name: 'Tycoon Railroad', minBid: 7, vpSchedule: [4, 5, 7, 9] }, // 4 / 9 / 16 / 25
   { typeId: 'big-bear', name: 'Big Bear', minBid: 5, vpSchedule: [3, 4, 6, 8] },         // 3 / 7 / 13 / 21
@@ -137,7 +137,7 @@ const BUILDING_TILES: BuildingTile[] = [
   { id: 'lumber-wheat-trading-firm', name: 'Lumber/ Wheat Trading Firm', cost: 10, description: 'You get $1/ unit of Wood or Wheat that is sold by any player.', tradingFirmCommodities: ['wood', 'wheat'] },
   { id: 'goods-luxury-trading-firm', name: 'Goods Luxury Trading Firm', cost: 10, description: 'You get $1/ unit of Goods or Luxury that is sold by any player.', tradingFirmCommodities: ['goods', 'luxury'] },
   { id: 'coal-iron-trading-firm', name: 'Coal / Iron Trading Firm', cost: 10, description: 'You get $1/ unit of Coal or Iron that is sold by any player.', tradingFirmCommodities: ['coal', 'iron'] },
-  { id: 'warehouse-x2', name: 'Warehouse (x2)', cost: 10, description: 'You may store an extra 3 Commodity Tokens.', storageBonus: 3 },
+  { id: 'warehouse-x2', name: 'Warehouse', cost: 10, description: 'You may store an extra 3 Commodity Tokens.', storageBonus: 3 },
   { id: 'construction-company', name: 'Construction Company', cost: 20, description: 'You may perform two Purchase Building actions in one turn.', extraBuildingPurchase: true },
   { id: 'freight-company', name: 'Freight Company', cost: 25, description: 'You may sell 2 Commodities in one turn.', extraSellAction: true },
   { id: 'governors-mansion', name: "Governor's Mansion", cost: 30, description: 'Each Town Card you own is worth +1 VP at the end of the game.', vpPerTown: 1 },
@@ -148,10 +148,10 @@ const BUILDING_TILES: BuildingTile[] = [
   { id: 'black-market', name: 'Black Market', cost: 30, description: 'Your hand limit of Price & Production cards is increased to 5.', handSize: 5 },
   { id: 'brick-works', name: 'Brick Works', cost: 25, description: 'You may build Towns with one fewer Commodity.', townCostReduce: 1 },
   { id: 'mayors-office', name: "Mayor's Office", cost: 30, description: 'Each Building you own is worth +1 VP at the end of the game.', vpPerBuilding: 1 },
-  { id: 'trading-floor', name: 'Trading Floor', cost: 15, description: "When using the 'Produce' action, you may also buy any number of one Commodity currently owned by one other player at the current market price (before the price is affected by the Price & Production card). They may not refuse." },
+  { id: 'trading-floor', name: 'Trading Floor', cost: 15, description: "When using the 'Produce' action, you may also buy any number of one Commodity currently owned by one other player at the current market price (before the price is affected by the Price & Production card). They may not refuse.", tradingFloor: true },
   { id: 'export-company', name: 'Export Company', cost: 30, description: "When selling a Commodity, you may increase the price of that Commodity by $3 before selling. Maximum Price is limited to the value shown on the board for that Commodity.", sellPriceBonus: 3 },
   { id: 'cottage-industry-p', name: 'Cottage Industry (p)', cost: 30, description: 'You may produce up to four (4) of the Commodity Tokens shown in the Production area of a Price/ Production Card.', productionLimit: 4, bpTag: true },
-  { id: 'factory-x2-p', name: 'Factory (x2) (p)', cost: 40, description: 'You may produce up to five (5) of the Commodity Tokens shown in the Production area of a Price/ Production Card.', productionLimit: 5, bpTag: true },
+  { id: 'factory-x2-p', name: 'Factory (p)', cost: 40, description: 'You may produce up to five (5) of the Commodity Tokens shown in the Production area of a Price/ Production Card.', productionLimit: 5, bpTag: true },
 ];
 
 /** Level-1 B card tiles (7 types); only 4 are used per game. */
@@ -160,14 +160,27 @@ const B_LEVEL1_TILES = BUILDING_TILES.filter(t => t.bpLevel === 1 && t.bpUpgrade
 /** Non-B buildings (shuffled into the stack; refill offer from this). */
 const NON_B_TILES = BUILDING_TILES.filter(t => !t.bpTag);
 
+/** Building ids that appear twice in the pool (e.g. Warehouse). */
+const DOUBLE_POOL_IDS = ['warehouse-x2'];
+
 /**
  * Per game: pick a random 4 of the 7 B card types for the initial offer; the rest of the deck is non-B buildings only.
- * Initial building offer = those 4 B cards. Stack = shuffled non-B buildings (refill from here).
+ * Some buildings (e.g. Warehouse) appear twice in the pool.
  */
 export function createBuildingDeckForGame(): { initialOffer: BuildingTile[]; buildingStack: BuildingTile[] } {
   const bPool = shuffle([...B_LEVEL1_TILES]);
   const initialOffer = bPool.slice(0, 4);
-  const buildingStack = shuffle([...NON_B_TILES]);
+  const stack: BuildingTile[] = [];
+  for (const t of NON_B_TILES) {
+    stack.push(t);
+    if (DOUBLE_POOL_IDS.includes(t.id)) stack.push(t);
+  }
+  const factoryTile = getBuildingTileById('factory-x2-p');
+  if (factoryTile) {
+    stack.push(factoryTile);
+    stack.push(factoryTile);
+  }
+  const buildingStack = shuffle(stack);
   return { initialOffer, buildingStack };
 }
 
@@ -180,6 +193,11 @@ export function createBuildingTiles(): BuildingTile[] {
 /** Look up any building tile by id (including level-2 B sides, for upgrades). */
 export function getBuildingTileById(id: string): BuildingTile | undefined {
   return BUILDING_TILES.find(t => t.id === id);
+}
+
+/** All building tiles (for dev panel dropdown). Remove when stripping dev mode. */
+export function getAllBuildingTiles(): BuildingTile[] {
+  return [...BUILDING_TILES];
 }
 
 function shuffle<T>(arr: T[]): T[] {

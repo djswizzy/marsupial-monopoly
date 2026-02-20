@@ -171,11 +171,36 @@ export function getProductionList(card: { production: Partial<Record<Commodity, 
   return COMMODITIES.flatMap(c => Array(card.production[c] ?? 0).fill(c));
 }
 
-export function actionProduction(state: GameState, cardIndex: number, commoditiesToTake?: Commodity[]): GameState {
+export function actionProduction(
+  state: GameState,
+  cardIndex: number,
+  commoditiesToTake?: Commodity[],
+  tradingFloorPurchase?: { fromPlayerIndex: number; commodity: Commodity; quantity: number }
+): GameState {
   const s = { ...state, players: state.players.map(x => ({ ...x })) };
   const p = s.players[s.currentPlayerIndex];
   const card = p.hand[cardIndex];
   if (!card) return state;
+
+  if (tradingFloorPurchase && tradingFloorPurchase.quantity > 0) {
+    const hasTradingFloor = getEffectiveBuildings(p).some(b => b.tradingFloor === true);
+    if (!hasTradingFloor) return state;
+    const fromIdx = tradingFloorPurchase.fromPlayerIndex;
+    if (fromIdx === s.currentPlayerIndex || fromIdx < 0 || fromIdx >= s.players.length) return state;
+    const fromPlayer = s.players[fromIdx];
+    const c = tradingFloorPurchase.commodity;
+    const qty = tradingFloorPurchase.quantity;
+    const have = fromPlayer.commodities[c] ?? 0;
+    if (qty > have) return state;
+    const price = s.market[c];
+    const cost = price * qty;
+    if (p.money < cost) return state;
+    fromPlayer.commodities[c] = have - qty;
+    if (fromPlayer.commodities[c] === 0) delete fromPlayer.commodities[c];
+    p.commodities[c] = (p.commodities[c] ?? 0) + qty;
+    p.money -= cost;
+    fromPlayer.money += cost;
+  }
 
   const maxProd = getMaxProduction(p);
   const available: Commodity[] = getProductionList(card);
@@ -241,7 +266,7 @@ export function getTotalCommodities(commodities: Partial<Record<Commodity, numbe
   return totalCommodities(commodities);
 }
 
-export function actionSell(state: GameState, commodity: Commodity, quantity: number): GameState {
+export function actionSell(state: GameState, commodity: Commodity, quantity: number, useExportCompany?: boolean): GameState {
   const s = { ...state, players: state.players.map(x => ({ ...x })) };
   const p = s.players[s.currentPlayerIndex];
   const have = p.commodities[commodity] ?? 0;
@@ -250,9 +275,11 @@ export function actionSell(state: GameState, commodity: Commodity, quantity: num
 
   p.commodities[commodity] = have - sell;
   let price = s.market[commodity];
-  const exportBuilding = p.buildings.find(b => b.sellPriceBonus != null);
-  if (exportBuilding?.sellPriceBonus != null) {
-    price = Math.min(COMMODITY_PRICE_MAX[commodity], price + exportBuilding.sellPriceBonus);
+  if (useExportCompany) {
+    const exportBuilding = p.buildings.find(b => b.sellPriceBonus != null);
+    if (exportBuilding?.sellPriceBonus != null) {
+      price = Math.min(COMMODITY_PRICE_MAX[commodity], price + exportBuilding.sellPriceBonus);
+    }
   }
   p.money += price * sell;
   s.market[commodity] = Math.max(COMMODITY_PRICE_MIN[commodity], s.market[commodity] - sell);
@@ -389,6 +416,15 @@ export function actionUpgradeBBuilding(state: GameState, buildingId: string): Ga
   p.buildings = p.buildings.map(b => b.id === buildingId ? level2Tile : b);
   if (p.activeBpBuildingId === buildingId) p.activeBpBuildingId = level2Tile.id;
   s.actionTakenThisTurn = true;
+  return s;
+}
+
+export function actionSetActiveBpBuilding(state: GameState, buildingId: string): GameState {
+  const s = { ...state, players: state.players.map(x => ({ ...x })) };
+  const p = s.players[s.currentPlayerIndex];
+  const building = p.buildings.find(b => b.id === buildingId);
+  if (!building?.bpTag) return state;
+  p.activeBpBuildingId = buildingId;
   return s;
 }
 
@@ -537,7 +573,11 @@ export function formatActionMessage(
       const priceList = card.priceIncrease.length > 0
         ? card.priceIncrease.map((c) => COMMODITY_NAMES[c]).join(', ')
         : '—'
-      return `Played production card: took ${prodList}, raised ${priceList} by $1`
+      const tf = action.tradingFloorPurchase as { fromPlayerIndex: number; commodity: Commodity; quantity: number } | undefined
+      const tfMsg = tf && tf.quantity > 0 && useState.players[tf.fromPlayerIndex]
+        ? `; bought ${tf.quantity} ${COMMODITY_NAMES[tf.commodity]} from ${useState.players[tf.fromPlayerIndex].name} (Trading Floor)`
+        : ''
+      return `Played production card: took ${prodList}, raised ${priceList} by $1${tfMsg}`
     }
     case 'sell':
       return `Sold ${action.quantity} ${COMMODITY_NAMES[action.commodity as Commodity]}`
@@ -579,11 +619,12 @@ export function formatActionMessage(
 
 /** Action types for online play - server applies these. */
 export type GameAction =
-  | { type: 'production'; cardIndex: number; commoditiesToTake?: Commodity[] }
-  | { type: 'sell'; commodity: Commodity; quantity: number }
+  | { type: 'production'; cardIndex: number; commoditiesToTake?: Commodity[]; tradingFloorPurchase?: { fromPlayerIndex: number; commodity: Commodity; quantity: number } }
+  | { type: 'sell'; commodity: Commodity; quantity: number; useExportCompany?: boolean }
   | { type: 'discard'; commodity: Commodity }
   | { type: 'buyBuilding'; buildingIndex: number }
   | { type: 'upgradeBBuilding'; buildingId: string }
+  | { type: 'setActiveBpBuilding'; buildingId: string }
   | { type: 'buyTown'; useSpecific: boolean }
   | { type: 'startAuction'; railroadIndex: number }
   | { type: 'placeBid'; amount: number }
@@ -593,15 +634,17 @@ export type GameAction =
 export function applyGameAction(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'production':
-      return actionProduction(state, action.cardIndex, action.commoditiesToTake)
+      return actionProduction(state, action.cardIndex, action.commoditiesToTake, action.tradingFloorPurchase)
     case 'sell':
-      return actionSell(state, action.commodity, action.quantity)
+      return actionSell(state, action.commodity, action.quantity, action.useExportCompany)
     case 'discard':
       return actionDiscard(state, action.commodity)
     case 'buyBuilding':
       return actionBuyBuilding(state, action.buildingIndex)
     case 'upgradeBBuilding':
       return actionUpgradeBBuilding(state, action.buildingId)
+    case 'setActiveBpBuilding':
+      return actionSetActiveBpBuilding(state, action.buildingId)
     case 'buyTown':
       return actionBuyTown(state, action.useSpecific)
     case 'startAuction':

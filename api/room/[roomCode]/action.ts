@@ -7,6 +7,7 @@ import {
   actionDiscard,
   actionBuyBuilding,
   actionUpgradeBBuilding,
+  actionSetActiveBpBuilding,
   actionBuyTown,
   startAuction,
   placeBid,
@@ -42,15 +43,17 @@ function pushLogEntry(roomData: RoomData, playerIndex: number, type: string, pay
 function applyAction(state: GameState, type: string, payload: Record<string, unknown>): GameState {
   switch (type) {
     case 'production':
-      return actionProduction(state, payload.cardIndex as number, payload.commoditiesToTake as string[] | undefined)
+      return actionProduction(state, payload.cardIndex as number, payload.commoditiesToTake as string[] | undefined, payload.tradingFloorPurchase as { fromPlayerIndex: number; commodity: string; quantity: number } | undefined)
     case 'sell':
-      return actionSell(state, payload.commodity as Parameters<typeof actionSell>[1], payload.quantity as number)
+      return actionSell(state, payload.commodity as Parameters<typeof actionSell>[1], payload.quantity as number, payload.useExportCompany as boolean | undefined)
     case 'discard':
       return actionDiscard(state, payload.commodity as Parameters<typeof actionDiscard>[1])
     case 'buyBuilding':
       return actionBuyBuilding(state, payload.buildingIndex as number)
     case 'upgradeBBuilding':
       return actionUpgradeBBuilding(state, payload.buildingId as string)
+    case 'setActiveBpBuilding':
+      return actionSetActiveBpBuilding(state, payload.buildingId as string)
     case 'buyTown':
       return actionBuyTown(state, payload.useSpecific as boolean)
     case 'startAuction':
