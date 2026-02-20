@@ -109,6 +109,7 @@ export function initGame(numPlayers: number, names: string[]): GameState {
 };
 }
 
+/** Draw one production card for the current player. If the deck is empty, replenish it by shuffling the discard pile, then draw. */
 export function drawOneCard(state: GameState): GameState {
   const s = { ...state, players: state.players.map(x => ({ ...x, hand: [...x.hand] })) };
   const p = s.players[s.currentPlayerIndex];
@@ -118,6 +119,7 @@ export function drawOneCard(state: GameState): GameState {
   if (deck.length > 0) {
     card = deck.pop()!;
   } else if (discard.length > 0) {
+    // Replenish deck from discard, then draw
     deck = shuffle(discard);
     discard = [];
     card = deck.pop()!;

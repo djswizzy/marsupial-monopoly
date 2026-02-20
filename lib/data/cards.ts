@@ -1,55 +1,69 @@
 import type { Commodity, ProductionCard, RailroadCard, TownCard, BuildingTile } from '../types.js';
 
-function prod(p: Partial<Record<Commodity, number>>, price: Commodity[]): ProductionCard {
-  return { id: `p-${Math.random().toString(36).slice(2, 9)}`, production: p, priceIncrease: price };
-}
+/** 54 price & production cards (price = commodities that go +1 when played; production = commodities you take). Matches src/data/cards.ts. */
+const PRICE_AND_PRODUCTION_CARDS: { production: Partial<Record<Commodity, number>>; priceIncrease: Commodity[] }[] = [
+  { priceIncrease: ['wheat', 'wheat', 'coal', 'goods'], production: { wheat: 1, wood: 1, luxury: 1 } },
+  { priceIncrease: ['wood', 'iron', 'luxury'], production: { wheat: 1, wood: 1, coal: 1, goods: 1 } },
+  { priceIncrease: ['wood', 'goods', 'luxury'], production: { iron: 2, luxury: 2 } },
+  { priceIncrease: ['wood', 'iron', 'iron', 'iron'], production: { coal: 2, luxury: 1 } },
+  { priceIncrease: ['wheat', 'wood'], production: { wheat: 1, wood: 2, luxury: 1, iron: 1 } },
+  { priceIncrease: ['wheat', 'iron', 'goods', 'luxury'], production: { wheat: 1, coal: 1, luxury: 1 } },
+  { priceIncrease: ['wood', 'wood'], production: { coal: 1, iron: 1, goods: 1, luxury: 1 } },
+  { priceIncrease: ['coal', 'goods', 'goods'], production: { wheat: 1, iron: 1, coal: 1 } },
+  { priceIncrease: ['goods', 'goods', 'luxury'], production: { wheat: 1, wood: 1, coal: 1 } },
+  { priceIncrease: ['wheat', 'wood'], production: { iron: 2, coal: 1, goods: 1 } },
+  { priceIncrease: ['coal', 'goods', 'luxury'], production: { wheat: 2, wood: 1, goods: 1 } },
+  { priceIncrease: ['coal', 'luxury'], production: { wheat: 1, wood: 2, luxury: 1, goods: 1 } },
+  { priceIncrease: ['iron', 'iron'], production: { iron: 1, coal: 1, luxury: 2 } },
+  { priceIncrease: ['wheat', 'iron'], production: { wheat: 3, wood: 1, iron: 1 } },
+  { priceIncrease: ['wheat', 'iron', 'coal'], production: { wheat: 1, coal: 1, iron: 1, goods: 1 } },
+  { priceIncrease: ['iron', 'coal'], production: { wheat: 1, wood: 2, coal: 1 } },
+  { priceIncrease: ['wheat', 'wood', 'goods'], production: { iron: 3, coal: 1 } },
+  { priceIncrease: ['wheat', 'coal', 'goods', 'goods'], production: { wood: 1, goods: 1, luxury: 1 } },
+  { priceIncrease: ['coal', 'coal', 'goods'], production: { wheat: 1, wood: 1, coal: 1 } },
+  { priceIncrease: ['wood', 'luxury'], production: { wheat: 2, goods: 1, luxury: 1 } },
+  { priceIncrease: ['wood', 'goods'], production: { wheat: 1, coal: 1, luxury: 1, wood: 2 } },
+  { priceIncrease: ['luxury', 'luxury', 'luxury'], production: { wood: 1, iron: 2 } },
+  { priceIncrease: ['wood', 'goods'], production: { wheat: 1, wood: 1, iron: 1, luxury: 1 } },
+  { priceIncrease: ['coal', 'coal', 'luxury'], production: { wheat: 1, wood: 1, coal: 1 } },
+  { priceIncrease: ['goods', 'luxury', 'luxury'], production: { wheat: 1, wood: 1, iron: 1 } },
+  { priceIncrease: ['coal', 'goods'], production: { wheat: 1, coal: 1, goods: 2, iron: 1 } },
+  { priceIncrease: ['wood', 'wood', 'luxury'], production: { wood: 1, goods: 1, iron: 1, luxury: 1 } },
+  { priceIncrease: ['wood', 'coal', 'iron', 'luxury'], production: { wood: 2, iron: 1 } },
+  { priceIncrease: ['wheat', 'luxury'], production: { coal: 3, luxury: 1, iron: 1 } },
+  { priceIncrease: ['coal', 'luxury'], production: { wheat: 2, goods: 1, luxury: 1 } },
+  { priceIncrease: ['coal', 'coal'], production: { wheat: 1, coal: 1, wood: 1, luxury: 1 } },
+  { priceIncrease: ['wood', 'goods', 'goods', 'coal'], production: { wheat: 1, wood: 1, goods: 1 } },
+  { priceIncrease: ['iron', 'goods'], production: { wheat: 1, goods: 1, iron: 1, luxury: 1 } },
+  { priceIncrease: ['wheat', 'iron', 'wood', 'luxury'], production: { wheat: 1, wood: 1, goods: 1 } },
+  { priceIncrease: ['wheat', 'goods', 'goods', 'luxury'], production: { coal: 1, goods: 1, luxury: 1 } },
+  { priceIncrease: ['iron', 'iron', 'iron', 'luxury'], production: { wood: 1, coal: 2 } },
+  { priceIncrease: ['wood', 'wood', 'iron', 'coal'], production: { coal: 2, luxury: 2 } },
+  { priceIncrease: ['wheat', 'wheat', 'goods', 'luxury'], production: { wheat: 1, coal: 1, luxury: 1 } },
+  { priceIncrease: ['wood', 'goods'], production: { iron: 2, goods: 3 } },
+  { priceIncrease: ['coal', 'luxury', 'luxury'], production: { wheat: 3, wood: 1 } },
+  { priceIncrease: ['wheat', 'goods'], production: { coal: 3, luxury: 1, wood: 1 } },
+  { priceIncrease: ['goods', 'luxury'], production: { wood: 2, iron: 1, coal: 1, goods: 1 } },
+  { priceIncrease: ['wheat', 'iron', 'iron', 'goods'], production: { wood: 1, iron: 1, goods: 1 } },
+  { priceIncrease: ['wood', 'iron'], production: { wheat: 2, goods: 1, luxury: 1 } },
+  { priceIncrease: ['wood', 'iron', 'goods'], production: { wheat: 2, wood: 1, luxury: 1 } },
+  { priceIncrease: ['coal', 'coal', 'luxury'], production: { iron: 2, coal: 1, goods: 1 } },
+  { priceIncrease: ['wheat', 'coal', 'goods'], production: { wood: 1, goods: 2, coal: 1 } },
+  { priceIncrease: ['iron', 'goods'], production: { iron: 1, coal: 3, luxury: 1 } },
+  { priceIncrease: ['iron', 'iron'], production: { wheat: 3, goods: 1, luxury: 1 } },
+  { priceIncrease: ['iron', 'coal', 'luxury'], production: { wheat: 2, goods: 2 } },
+  { priceIncrease: ['coal', 'iron', 'goods'], production: { wood: 2, iron: 1, goods: 1 } },
+  { priceIncrease: ['iron', 'luxury'], production: { wood: 1, coal: 1, iron: 1, goods: 1 } },
+  { priceIncrease: ['wood', 'goods'], production: { wheat: 1, goods: 1, coal: 1, luxury: 1 } },
+  { priceIncrease: ['wood', 'luxury'], production: { wood: 1, goods: 2, luxury: 2 } },
+];
 
 export function createProductionDeck(): ProductionCard[] {
-  const templates: [Partial<Record<Commodity, number>>, Commodity[]][] = [
-    [{ wheat: 2, wood: 1 }, ['wheat', 'wood']],
-    [{ wheat: 1, coal: 2 }, ['coal']],
-    [{ wood: 2, iron: 1 }, ['wood', 'iron']],
-    [{ iron: 2, coal: 1 }, ['iron']],
-    [{ goods: 2, luxury: 1 }, ['goods', 'luxury']],
-    [{ wheat: 1, goods: 1, luxury: 1 }, ['luxury']],
-    [{ wood: 1, iron: 1, coal: 1 }, ['iron', 'coal']],
-    [{ wheat: 1, wood: 1, goods: 1 }, ['wheat', 'goods']],
-    [{ coal: 2, goods: 1 }, ['coal', 'goods']],
-    [{ wheat: 2, iron: 1 }, ['wheat']],
-    [{ wood: 1, coal: 1, luxury: 1 }, ['wood', 'luxury']],
-    [{ iron: 1, goods: 2 }, ['iron', 'goods']],
-    [{ wheat: 1, coal: 2 }, ['wheat', 'coal']],
-    [{ wood: 2, luxury: 1 }, ['wood']],
-    [{ iron: 1, coal: 1, goods: 1 }, ['coal']],
-    [{ wheat: 1, wood: 1, iron: 1 }, ['wheat', 'wood']],
-    [{ coal: 1, goods: 1, luxury: 1 }, ['luxury']],
-    [{ wheat: 2, coal: 1 }, ['wheat', 'coal']],
-    [{ wood: 1, iron: 2 }, ['wood', 'iron']],
-    [{ goods: 1, luxury: 2 }, ['goods', 'luxury']],
-    [{ wheat: 1, wood: 1, coal: 1 }, ['wood']],
-    [{ iron: 1, coal: 1, luxury: 1 }, ['iron', 'luxury']],
-    [{ wheat: 1, goods: 2 }, ['wheat', 'goods']],
-    [{ wood: 2, goods: 1 }, ['wood', 'goods']],
-    [{ iron: 2, luxury: 1 }, ['iron', 'luxury']],
-    // 4–5 commodity cards (choose 3)
-    [{ wood: 3, iron: 1, wheat: 1 }, ['wood', 'iron']],
-    [{ wheat: 2, coal: 2, goods: 1 }, ['wheat', 'coal']],
-    [{ iron: 2, coal: 1, luxury: 1 }, ['iron', 'luxury']],
-    [{ goods: 2, luxury: 2, wheat: 1 }, ['goods', 'luxury']],
-    [{ coal: 2, wood: 2, iron: 1 }, ['coal', 'wood']],
-    [{ wheat: 2, wood: 1, goods: 1, luxury: 1 }, ['wheat', 'goods']],
-    [{ iron: 1, coal: 1, goods: 1, luxury: 1 }, ['iron', 'coal']],
-    [{ wood: 2, iron: 2, coal: 1 }, ['wood', 'iron']],
-    [{ wheat: 3, wood: 1, coal: 1 }, ['wheat']],
-    [{ luxury: 2, goods: 2, coal: 1 }, ['luxury', 'goods']],
-  ];
-  const deck: ProductionCard[] = [];
-  let id = 0;
-  for (const [p, price] of templates) {
-    for (let i = 0; i < 2; i++) {
-      deck.push({ ...prod(p, price), id: `prod-${id++}` });
-    }
-  }
+  const deck: ProductionCard[] = PRICE_AND_PRODUCTION_CARDS.map((row, i) => ({
+    id: `prod-${i}`,
+    production: row.production,
+    priceIncrease: row.priceIncrease,
+  }));
   return shuffle(deck);
 }
 
