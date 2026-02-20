@@ -23,12 +23,13 @@ export function OnlineGameRoom({
 }: Props) {
   const [state, setState] = useState<GameState>(initialState)
   const [serverLogEntries, setServerLogEntries] = useState<LogEntry[]>([])
+  const [lastSyncAt, setLastSyncAt] = useState<number | null>(null)
+  const [pollError, setPollError] = useState<string | null>(null)
   const pollingRef = useRef<number | null>(null)
-  const lastStateHashRef = useRef<string>(JSON.stringify(initialState))
-  const stateRef = useRef<GameState>(initialState)
-  useEffect(() => {
-    stateRef.current = state
-  }, [state])
+  const roomCodeRef = useRef(roomCode)
+  const playerIdRef = useRef(playerId)
+  roomCodeRef.current = roomCode
+  playerIdRef.current = playerId
 
   const dispatch = useCallback(
     async (action: GameAction, applyFirst?: GameAction) => {
@@ -41,12 +42,13 @@ export function OnlineGameRoom({
         : undefined
 
       try {
+        const code = String(roomCodeRef.current || '').toUpperCase().trim()
         await withNgrokRetry(async () => {
-          const res = await fetch(`${API_BASE}/api/room/${roomCode}/action`, {
+          const res = await fetch(`${API_BASE}/api/room/${code}/action`, {
             method: 'POST',
             headers: API_HEADERS,
             body: JSON.stringify({
-              playerId,
+              playerId: playerIdRef.current,
               type,
               payload,
               applyFirst: applyFirstPayload,
@@ -58,10 +60,7 @@ export function OnlineGameRoom({
             return
           }
           const data = await safeJson<{ gameState?: GameState; gameLog?: LogEntry[] }>(res)
-          if (data.gameState != null) {
-            lastStateHashRef.current = JSON.stringify(data.gameState)
-            setState(data.gameState)
-          }
+          if (data.gameState != null) setState(data.gameState)
           if (Array.isArray(data.gameLog)) setServerLogEntries(data.gameLog)
         })
       } catch (err) {
@@ -75,34 +74,35 @@ export function OnlineGameRoom({
     let mounted = true
 
     async function pollGameState() {
+      const code = String(roomCodeRef.current || '').toUpperCase().trim()
+      const pid = String(playerIdRef.current || '').trim()
+      if (!code || !pid) return
       try {
-        await withNgrokRetry(async () => {
-          const res = await fetch(
-            `${API_BASE}/api/room/${roomCode}?playerId=${encodeURIComponent(playerId)}&_=${Date.now()}`,
-            { cache: 'no-store', headers: { ...API_HEADERS, Pragma: 'no-cache', 'Cache-Control': 'no-cache' } }
-          )
-          if (!res.ok) return
-          const data = await safeJson<{ status?: string; gameState?: GameState; gameLog?: LogEntry[] }>(res)
-          if (data.status === 'playing' && data.gameState && mounted) {
-            const stateHash = JSON.stringify(data.gameState)
-            const turnChanged = data.gameState.currentPlayerIndex !== stateRef.current.currentPlayerIndex
-            if (turnChanged || stateHash !== lastStateHashRef.current) {
-              lastStateHashRef.current = stateHash
-              setState(data.gameState)
-            }
-            // Always sync log from server so all players see the same history
-            if (mounted && Array.isArray(data.gameLog)) {
-              setServerLogEntries(data.gameLog)
-            }
-          }
-        })
-      } catch (err) {
-        // Silently handle polling errors
+        setPollError(null)
+        const res = await fetch(
+          `${API_BASE}/api/room/${code}?playerId=${encodeURIComponent(pid)}&_=${Date.now()}`,
+          { cache: 'no-store', headers: { ...API_HEADERS, Pragma: 'no-cache', 'Cache-Control': 'no-cache' } }
+        )
+        if (!res.ok) {
+          if (mounted) setPollError(res.status === 403 ? 'Not in room (403)' : `Sync failed: ${res.status}`)
+          return
+        }
+        const data = await safeJson<{ status?: string; gameState?: GameState; gameLog?: LogEntry[] }>(res)
+        if (!mounted) return
+        if (data.status === 'playing' && data.gameState) {
+          setState(data.gameState)
+          setLastSyncAt(Date.now())
+        }
+        if (Array.isArray(data.gameLog)) {
+          setServerLogEntries(data.gameLog)
+        }
+      } catch (e) {
+        if (mounted) setPollError((e as Error).message.slice(0, 50))
       }
     }
 
     pollGameState()
-    const interval = setInterval(pollGameState, 500) // Poll every 500ms so all players see log updates quickly
+    const interval = setInterval(pollGameState, 400)
     pollingRef.current = interval as unknown as number
 
     return () => {
@@ -116,12 +116,17 @@ export function OnlineGameRoom({
   }
 
   return (
-    <GameBoard
-      state={state}
-      setState={setState}
-      dispatch={dispatch}
-      playerIndex={playerIndex}
-      serverLogEntries={serverLogEntries}
-    />
+    <>
+      <div className="online-sync-bar" style={{ padding: '4px 8px', fontSize: 12, background: pollError ? '#4a1c1c' : lastSyncAt != null ? '#1c2e1c' : '#2a2a2a', color: '#ccc' }}>
+        {pollError ? `⚠ ${pollError}` : lastSyncAt != null ? `✓ Synced ${Math.round((Date.now() - lastSyncAt) / 1000)}s ago` : 'Syncing…'}
+      </div>
+      <GameBoard
+        state={state}
+        setState={setState}
+        dispatch={dispatch}
+        playerIndex={playerIndex}
+        serverLogEntries={serverLogEntries}
+      />
+    </>
   )
 }
