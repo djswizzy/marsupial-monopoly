@@ -24,7 +24,11 @@ export function OnlineGameRoom({
   const [state, setState] = useState<GameState>(initialState)
   const [serverLogEntries, setServerLogEntries] = useState<LogEntry[]>([])
   const pollingRef = useRef<number | null>(null)
-  const lastStateHashRef = useRef<string>('')
+  const lastStateHashRef = useRef<string>(JSON.stringify(initialState))
+  const stateRef = useRef<GameState>(initialState)
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   const dispatch = useCallback(
     async (action: GameAction, applyFirst?: GameAction) => {
@@ -54,7 +58,10 @@ export function OnlineGameRoom({
             return
           }
           const data = await safeJson<{ gameState?: GameState; gameLog?: LogEntry[] }>(res)
-          if (data.gameState != null) setState(data.gameState)
+          if (data.gameState != null) {
+            lastStateHashRef.current = JSON.stringify(data.gameState)
+            setState(data.gameState)
+          }
           if (Array.isArray(data.gameLog)) setServerLogEntries(data.gameLog)
         })
       } catch (err) {
@@ -70,15 +77,16 @@ export function OnlineGameRoom({
     async function pollGameState() {
       try {
         await withNgrokRetry(async () => {
-          const res = await fetch(`${API_BASE}/api/room/${roomCode}?playerId=${playerId}`, {
-            cache: 'no-store',
-            headers: { ...API_HEADERS, Pragma: 'no-cache', 'Cache-Control': 'no-cache' },
-          })
+          const res = await fetch(
+            `${API_BASE}/api/room/${roomCode}?playerId=${encodeURIComponent(playerId)}&_=${Date.now()}`,
+            { cache: 'no-store', headers: { ...API_HEADERS, Pragma: 'no-cache', 'Cache-Control': 'no-cache' } }
+          )
           if (!res.ok) return
           const data = await safeJson<{ status?: string; gameState?: GameState; gameLog?: LogEntry[] }>(res)
-          if (data.status === 'playing' && data.gameState) {
+          if (data.status === 'playing' && data.gameState && mounted) {
             const stateHash = JSON.stringify(data.gameState)
-            if (stateHash !== lastStateHashRef.current && mounted) {
+            const turnChanged = data.gameState.currentPlayerIndex !== stateRef.current.currentPlayerIndex
+            if (turnChanged || stateHash !== lastStateHashRef.current) {
               lastStateHashRef.current = stateHash
               setState(data.gameState)
             }

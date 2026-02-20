@@ -131,6 +131,7 @@ app.get('/api/room/:roomCode', (req, res) => {
     res.status(403).json({ error: 'Player not in room' })
     return
   }
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
   res.json({
     players: room.players.map((p) => ({ name: p.name, index: p.index })),
     status: room.status,
