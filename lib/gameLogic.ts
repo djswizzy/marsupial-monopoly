@@ -1,5 +1,5 @@
 import type { GameState, Player, Commodity, Market, ProductionCard } from './types.js';
-import { createProductionDeck, createBuildingTiles, RAILROADS, TOWNS, COMMODITY_NAMES } from './data/cards.js';
+import { createProductionDeck, createBuildingTiles, createRailroadDeck, TOWNS, COMMODITY_NAMES } from './data/cards.js';
 
 /** Deep clone game state so it can be stored for undo without being mutated by subsequent actions. */
 export function cloneGameState(state: GameState): GameState {
@@ -66,11 +66,7 @@ export function initGame(numPlayers: number, names: string[]): GameState {
     }
   });
 
-  let railroadDeck = [...RAILROADS];
-  if (numPlayers <= 4) railroadDeck = railroadDeck.filter(r => r.id !== 'rr-7');
-  if (numPlayers <= 3) railroadDeck = railroadDeck.filter(r => r.id !== 'rr-8' && r.id !== 'rr-6');
-  if (numPlayers <= 2) railroadDeck = railroadDeck.filter(r => !['rr-7', 'rr-8', 'rr-6'].includes(r.id));
-  railroadDeck = shuffle(railroadDeck);
+  const railroadDeck = createRailroadDeck(numPlayers);
   const railroadOffer = railroadDeck.splice(0, 2);
 
   let townDeck = [...TOWNS];
@@ -305,9 +301,9 @@ function nextAuctionTurn(s: GameState): GameState {
     s.auctionBids = [];
     s.auctionPassed = [];
     const auctionStarter = s.auctionStarterIndex;
-    if (winner >= 0 && winner !== auctionStarter) {
-      s.currentPlayerIndex = auctionStarter;
-      s.actionTakenThisTurn = false; // starter gets a full turn (can start another auction, etc.)
+    if (winner >= 0) {
+      s.currentPlayerIndex = auctionStarter; // always revert to bid starter, win or lose
+      s.actionTakenThisTurn = winner === auctionStarter; // starter won => must press End turn; else gets another action
     }
     return s;
   }
@@ -397,11 +393,24 @@ function endGame(s: GameState): GameState {
   return s;
 }
 
+function railroadVp(railroads: { typeId: string; vpSchedule: number[] }[]): number {
+  const countByType = new Map<string, number>();
+  const scheduleByType = new Map<string, number[]>();
+  for (const r of railroads) {
+    countByType.set(r.typeId, (countByType.get(r.typeId) ?? 0) + 1);
+    if (!scheduleByType.has(r.typeId)) scheduleByType.set(r.typeId, r.vpSchedule);
+  }
+  let total = 0;
+  for (const [typeId, count] of countByType) {
+    const schedule = scheduleByType.get(typeId) ?? [1, 2, 3, 4];
+    for (let i = 0; i < count && i < schedule.length; i++) total += schedule[i];
+  }
+  return total;
+}
+
 export function computeScores(state: GameState): { playerIndex: number; vp: number; money: number }[] {
   return state.players.map((p, i) => {
-    // Towns: printed VP on each; railroads: sum of each card's VP
-    let vp = p.towns.reduce((s, t) => s + t.vp, 0) + p.railroads.reduce((s, r) => s + r.vp, 0);
-    // +2 per town–railroad pair (town paired with a railroad at end of game)
+    let vp = p.towns.reduce((s, t) => s + t.vp, 0) + railroadVp(p.railroads);
     const pairs = Math.min(p.towns.length, p.railroads.length);
     vp += pairs * 2;
     vp += p.buildings.length;

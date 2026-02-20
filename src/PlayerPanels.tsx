@@ -3,20 +3,19 @@ import { computeScores } from './gameLogic'
 
 type Props = { state: GameState }
 
-function railroadVpBreakdown(railroads: { name: string; vp: number }[]): { name: string; count: number; vp: number }[] {
-  const byName = new Map<string, { count: number; vp: number }>()
+function railroadVpBreakdown(railroads: { typeId: string; name: string; vpSchedule: number[] }[]): { name: string; count: number; vp: number }[] {
+  const byType = new Map<string, { name: string; count: number; vpSchedule: number[] }>()
   for (const r of railroads) {
-    const cur = byName.get(r.name)
-    if (!cur) byName.set(r.name, { count: 1, vp: r.vp })
-    else {
-      cur.count += 1
-    }
+    const cur = byType.get(r.typeId)
+    if (!cur) byType.set(r.typeId, { name: r.name, count: 1, vpSchedule: r.vpSchedule })
+    else cur.count += 1
   }
-  return Array.from(byName.entries()).map(([name, { count, vp }]) => ({
-    name,
-    count,
-    vp: vp * count,
-  }))
+  return Array.from(byType.values()).map(({ name, count, vpSchedule }) => {
+    const schedule = vpSchedule ?? [1, 2, 3, 4]
+    let vp = 0
+    for (let i = 0; i < count && i < schedule.length; i++) vp += schedule[i]
+    return { name, count, vp }
+  })
 }
 
 export function PlayerPanels({ state }: Props) {

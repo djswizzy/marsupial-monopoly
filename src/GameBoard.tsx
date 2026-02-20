@@ -6,7 +6,7 @@ import { COMMODITY_NAMES, COMMODITY_EMOJI } from './data/cards'
 import { COMMODITIES, actionProduction, actionBuyTown, actionBuyBuilding, startAuction, placeBid, passAuction, actionSell, actionDiscard, actionEndTurn, cloneGameState, getMaxProduction, getProductionList } from './gameLogic'
 import { MarketStrip } from './MarketStrip'
 import { DiscardDownPanel } from './DiscardDownPanel'
-import { RailroadOffer } from './RailroadOffer'
+import { RailroadOffer, formatRailroadVpSchedule } from './RailroadOffer'
 import { TownCard } from './TownCard'
 import { BuildingOffer } from './BuildingOffer'
 import { PlayerHand } from './PlayerHand'
@@ -87,7 +87,6 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
   const [stateBeforeAction, setStateBeforeAction] = useState<GameState | null>(null)
   const [stateBeforeAuction, setStateBeforeAuction] = useState<GameState | null>(null)
   const [logEntries, setLogEntries] = useState<LogEntry[]>([])
-  const [turnActions, setTurnActions] = useState<Array<{ action: GameAction; playerIdx: number }>>([])
   const turnActionsRef = useRef<Array<{ action: GameAction; playerIdx: number }>>([])
   const prevStateRef = useRef<GameState>(state)
   const isOnline = !!dispatch && playerIndex !== undefined
@@ -101,7 +100,6 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
     if (state.phase === 'playing' && prevStateRef.current.phase !== 'playing' && prevStateRef.current.phase !== 'auction') {
       setLogEntries([])
       turnActionsRef.current = []
-      setTurnActions([])
     }
     prevStateRef.current = state
   }, [state.phase])
@@ -110,7 +108,6 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
   useEffect(() => {
     if (prevStateRef.current.currentPlayerIndex !== state.currentPlayerIndex && prevStateRef.current.currentPlayerIndex !== undefined) {
       turnActionsRef.current = []
-      setTurnActions([])
     }
     prevStateRef.current = state
   }, [state.currentPlayerIndex])
@@ -118,7 +115,6 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
   function addTurnAction(action: GameAction, playerIdx: number) {
     const entry = { action, playerIdx }
     turnActionsRef.current = [...turnActionsRef.current, entry]
-    setTurnActions(prev => [...prev, entry])
   }
 
   function logTurnActions() {
@@ -140,7 +136,6 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
 
     setLogEntries(prev => [...prev, ...entries])
     turnActionsRef.current = []
-    setTurnActions([])
   }
 
   useEffect(() => {
@@ -411,7 +406,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
               {me.railroads.map(r => (
                 <li key={r.id} className="sidebar-item">
                   <span className="sidebar-item-name">{r.name}</span>
-                  <span className="sidebar-item-meta">{r.vp} VP</span>
+                  <span className="sidebar-item-meta">{formatRailroadVpSchedule(r.vpSchedule)} VP</span>
                 </li>
               ))}
             </ul>

@@ -53,24 +53,36 @@ export function createProductionDeck(): ProductionCard[] {
   return shuffle(deck);
 }
 
-export const RAILROADS: RailroadCard[] = [
-  { id: 'rr-1', name: 'Raccoon River', minBid: 2, vp: 1 },
-  { id: 'rr-2', name: 'Fox Run', minBid: 3, vp: 1 },
-  { id: 'rr-3', name: 'Bear Creek', minBid: 4, vp: 2 },
-  { id: 'rr-4', name: 'Otter Line', minBid: 3, vp: 1 },
-  { id: 'rr-5', name: 'Beaver Bend', minBid: 5, vp: 2 },
-  { id: 'rr-6', name: 'Sly Fox', minBid: 4, vp: 2 },
-  { id: 'rr-7', name: 'Skunkworks', minBid: 6, vp: 3 },
-  { id: 'rr-8', name: 'Tycoon Express', minBid: 8, vp: 4 },
-  { id: 'rr-9', name: 'Wolf Creek', minBid: 4, vp: 2 },
-  { id: 'rr-10', name: 'Possum Pass', minBid: 3, vp: 1 },
-  { id: 'rr-11', name: 'Badger & Co', minBid: 5, vp: 2 },
-  { id: 'rr-12', name: 'Mink Railway', minBid: 4, vp: 2 },
-  { id: 'rr-13', name: 'Hare Line', minBid: 3, vp: 1 },
-  { id: 'rr-14', name: 'Muskrat Central', minBid: 5, vp: 2 },
-  { id: 'rr-15', name: 'Weasel Way', minBid: 4, vp: 2 },
-  { id: 'rr-16', name: 'Astoria Main', minBid: 7, vp: 3 },
+const RAILROAD_TYPES: { typeId: string; name: string; minBid: number; vpSchedule: number[] }[] = [
+  { typeId: 'top-dog', name: 'Top Dog', minBid: 6, vpSchedule: [4, 5, 6, 8] },           // 4 / 9 / 15 / 23
+  { typeId: 'tycoon-railroad', name: 'Tycoon Railroad', minBid: 7, vpSchedule: [4, 5, 7, 9] }, // 4 / 9 / 16 / 25
+  { typeId: 'big-bear', name: 'Big Bear', minBid: 5, vpSchedule: [3, 4, 6, 8] },         // 3 / 7 / 13 / 21
+  { typeId: 'fat-cat', name: 'Fat Cat', minBid: 4, vpSchedule: [3, 4, 5, 7] },           // 3 / 7 / 12 / 19
+  { typeId: 'sly-fox', name: 'Sly Fox', minBid: 3, vpSchedule: [2, 3, 5, 7] },            // 2 / 5 / 10 / 17
+  { typeId: 'skunk-works', name: 'Skunk Works', minBid: 2, vpSchedule: [2, 3, 4, 6] },    // 2 / 5 / 9 / 15
 ];
+
+/** 2p: remove Sly Fox, Skunk Works, Tycoon. 3p: remove Skunk Works, Tycoon. 4p: remove Skunk Works. 5p: all. */
+export function createRailroadDeck(numPlayers: number): RailroadCard[] {
+  let types = [...RAILROAD_TYPES];
+  if (numPlayers <= 4) types = types.filter(t => t.typeId !== 'skunk-works');
+  if (numPlayers <= 3) types = types.filter(t => t.typeId !== 'tycoon-railroad');
+  if (numPlayers <= 2) types = types.filter(t => t.typeId !== 'sly-fox');
+  const deck: RailroadCard[] = [];
+  let id = 0;
+  for (const t of types) {
+    for (let copy = 0; copy < 4; copy++) {
+      deck.push({
+        id: `rr-${id++}`,
+        typeId: t.typeId,
+        name: t.name,
+        minBid: t.minBid,
+        vpSchedule: t.vpSchedule,
+      });
+    }
+  }
+  return shuffle(deck);
+}
 
 export const TOWNS: TownCard[] = [
   { id: 't-1', name: 'Millbrook', vp: 2, costSpecific: { wheat: 2, wood: 1 }, costAny: 0 },

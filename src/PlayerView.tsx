@@ -1,5 +1,6 @@
 import type { Player } from './types'
 import { COMMODITY_NAMES, COMMODITY_EMOJI } from './data/cards'
+import { formatRailroadVpSchedule } from './RailroadOffer'
 import { COMMODITIES } from './gameLogic'
 
 type Props = {
@@ -57,7 +58,7 @@ export function PlayerView({ player, isCurrentTurn, onClose }: Props) {
             {player.railroads.map(r => (
               <li key={r.id}>
                 <span className="item-name">{r.name}</span>
-                <span className="item-meta">{r.vp} VP</span>
+                <span className="item-meta">{formatRailroadVpSchedule(r.vpSchedule)} VP</span>
               </li>
             ))}
           </ul>

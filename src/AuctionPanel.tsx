@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { GameState } from './types'
 import { getPlayerColor } from './GameLog'
+import { formatRailroadVpSchedule } from './RailroadOffer'
 
 type Props = {
   state: GameState
@@ -33,7 +34,7 @@ export function AuctionPanel({ state, onBid, onPass, onClose, canAct = true }: P
           <h2>Auction: {rr.name}</h2>
           {onClose && <button type="button" className="auction-close" onClick={onClose} title="Close">×</button>}
         </div>
-        <p>Min bid ${rr.minBid} · {rr.vp} VP</p>
+        <p>Min bid ${rr.minBid} · {formatRailroadVpSchedule(rr.vpSchedule)} VP</p>
         <p className="current-high">
           Current high: ${Math.max(...state.auctionBids)} by{' '}
           {state.players[state.auctionBids.indexOf(Math.max(...state.auctionBids))].name}

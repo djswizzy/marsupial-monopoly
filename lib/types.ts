@@ -8,9 +8,10 @@ export interface ProductionCard {
 
 export interface RailroadCard {
   id: string;
+  typeId: string;
   name: string;
   minBid: number;
-  vp: number;
+  vpSchedule: number[];
 }
 
 export interface TownCard {

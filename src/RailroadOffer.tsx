@@ -10,12 +10,16 @@ type Props = {
   hideTitle?: boolean
 }
 
-function railroadVpProgression(vp: number): string {
-  const one = vp
-  const two = 2 * vp + 1
-  const three = 3 * vp + 3
-  const four = 4 * vp + 7
-  return `${one}:${two}:${three}:${four}`
+/** Show cumulative VP for 1–4 copies (as on the card: e.g. 4 / 9 / 15 / 23). */
+export function formatRailroadVpSchedule(vpSchedule: number[] | undefined): string {
+  if (!vpSchedule?.length) return '—'
+  let sum = 0
+  const cum: number[] = []
+  for (let i = 0; i < Math.min(4, vpSchedule.length); i++) {
+    sum += vpSchedule[i]
+    cum.push(sum)
+  }
+  return cum.join(' / ')
 }
 
 export function RailroadOffer({ railroads, onSelect, onConfirmStartAuction, disabled, currentPlayerMoney, selectedRailroadIndex = null, hideTitle = false }: Props) {
@@ -39,7 +43,7 @@ export function RailroadOffer({ railroads, onSelect, onConfirmStartAuction, disa
             >
               <div className="rr-name">{rr.name}</div>
               <div className="rr-min">Min ${rr.minBid}</div>
-              <div className="rr-vp" title="VP for 1, 2, 3, 4 cards">{railroadVpProgression(rr.vp)}</div>
+              <div className="rr-vp" title="VP for 1, 2, 3, 4 cards">{formatRailroadVpSchedule(rr.vpSchedule)}</div>
             </button>
           ) : (
             <div key={`empty-${i}`} className="railroad-card empty">—</div>
