@@ -299,14 +299,6 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
 
   return (
     <div className="game-board">
-      <header className="game-header">
-        <h1>Marsupial Monopoly</h1>
-        <div className="current-turn">
-          <span className="label">{isOnline ? (isMyTurn ? 'Your turn' : "Opponent's turn") : 'Current turn'}</span>
-          <span className="player-name" style={{ color: getPlayerColor(state.currentPlayerIndex) }}>{current.name}{isOnline && isMyTurn ? ' (you)' : ''}</span>
-        </div>
-      </header>
-
       <div className="game-body">
         <div className="game-main">
           <section className="market-section">
@@ -390,6 +382,10 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
         </div>
 
       <aside className="game-sidebar card">
+        <div className="sidebar-current-player">
+          <span className="sidebar-current-label">{isOnline ? (isMyTurn ? 'Your turn' : "Opponent's turn") : 'Current turn'}</span>
+          <span className="sidebar-current-name" style={{ color: getPlayerColor(state.currentPlayerIndex) }}>{current.name}{isOnline && isMyTurn ? ' (you)' : ''}</span>
+        </div>
         <h3>Your resources</h3>
         <div className="sidebar-money">${me.money}</div>
         <div className="commodities-list">
@@ -607,6 +603,23 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
           align-items: stretch;
           gap: 0.75rem;
         }
+        .sidebar-current-player {
+          display: flex;
+          flex-direction: column;
+          gap: 0.15rem;
+          padding-bottom: 0.5rem;
+          border-bottom: 1px solid var(--border);
+        }
+        .sidebar-current-label {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .sidebar-current-name {
+          font-weight: 600;
+          font-size: 1.1rem;
+        }
         .game-sidebar h3 {
           font-size: 0.9rem;
           color: var(--text-muted);
@@ -680,39 +693,6 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
         .sidebar-commit {
           width: 100%;
           padding: 0.65rem;
-        }
-        .game-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 1rem;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-          background: rgba(61, 37, 32, 0.94);
-          border: 2px solid var(--border);
-          border-radius: 12px;
-          padding: 0.75rem 1rem;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-        }
-        .game-header h1 {
-          font-size: 1.5rem;
-          color: var(--accent);
-          margin: 0;
-        }
-        .current-turn {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-        }
-        .current-turn .label {
-          font-size: 0.75rem;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-        .current-turn .player-name {
-          font-weight: 600;
-          font-size: 1.1rem;
         }
         .market-section {
           margin-bottom: 1rem;
