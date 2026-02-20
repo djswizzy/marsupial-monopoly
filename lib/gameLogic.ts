@@ -1,5 +1,15 @@
-import type { GameState, Player, Commodity, Market, ProductionCard } from './types.js';
-import { createProductionDeck, createBuildingTiles, createRailroadDeck, TOWNS, COMMODITY_NAMES } from './data/cards.js';
+import type { GameState, Player, Commodity, Market, ProductionCard, BuildingTile } from './types.js';
+import { createProductionDeck, createBuildingDeckForGame, createRailroadDeck, TOWNS, COMMODITY_NAMES, getBuildingTileById } from './data/cards.js';
+
+function getEffectiveBuildings(player: Player): BuildingTile[] {
+  const nonBp = player.buildings.filter(b => !b.bpTag);
+  const bp = player.buildings.filter(b => b.bpTag);
+  if (bp.length === 0) return nonBp;
+  const active = player.activeBpBuildingId && bp.some(b => b.id === player.activeBpBuildingId)
+    ? bp.find(b => b.id === player.activeBpBuildingId)!
+    : bp[0];
+  return [...nonBp, active];
+}
 
 /** Deep clone game state so it can be stored for undo without being mutated by subsequent actions. */
 export function cloneGameState(state: GameState): GameState {
@@ -76,9 +86,7 @@ export function initGame(numPlayers: number, names: string[]): GameState {
   }
   const currentTown = townDeck.shift() ?? null;
 
-  const buildingTiles = createBuildingTiles();
-  const buildingOffer = buildingTiles.splice(0, 4);
-  const buildingStack = buildingTiles;
+  const { initialOffer: buildingOffer, buildingStack } = createBuildingDeckForGame();
 
   return {
     phase: 'playing',
@@ -125,22 +133,25 @@ function drawOneCard(state: GameState): GameState {
 }
 
 export function getMaxProduction(player: Player): number {
-  const tile = player.buildings.find(b => b.productionLimit != null);
+  const buildings = getEffectiveBuildings(player);
+  const tile = buildings.find(b => b.productionLimit != null);
   if (tile?.productionLimit === 5) return 5;
   if (tile?.productionLimit === 4) return 4;
   return 3;
 }
 
 export function getMaxHandSize(player: Player): number {
-  if (player.buildings.some(b => b.handSize === 5)) return 5;
-  if (player.buildings.some(b => b.handSize === 4)) return 4;
+  const buildings = getEffectiveBuildings(player);
+  if (buildings.some(b => b.handSize === 5)) return 5;
+  if (buildings.some(b => b.handSize === 4)) return 4;
   return 3;
 }
 
 export function getMaxStorage(player: Player): number {
   let base = 10;
   base += player.buildings.length;
-  const warehouse = player.buildings.find(b => b.storageBonus != null);
+  const buildings = getEffectiveBuildings(player);
+  const warehouse = buildings.find(b => b.storageBonus != null);
   if (warehouse) base += warehouse.storageBonus!;
   return base;
 }
@@ -180,11 +191,19 @@ export function actionProduction(state: GameState, cardIndex: number, commoditie
     take = available.slice(0, maxProd);
   }
 
-  const bonusTile = p.buildings.find(b => b.commodityBonus != null);
+  const buildings = getEffectiveBuildings(p);
+  const bonusTile = buildings.find(b => b.commodityBonus != null);
   if (bonusTile?.commodityBonus) {
     const extra = bonusTile.bonusValue ?? 1;
     for (let i = 0; i < extra; i++) {
       const c = bonusTile.commodityBonus!;
+      p.commodities[c] = (p.commodities[c] ?? 0) + 1;
+    }
+  }
+  const anyBonusTile = buildings.find(b => b.anyCommodityBonus != null);
+  if (anyBonusTile?.anyCommodityBonus) {
+    const c = COMMODITIES[0];
+    for (let i = 0; i < anyBonusTile.anyCommodityBonus; i++) {
       p.commodities[c] = (p.commodities[c] ?? 0) + 1;
     }
   }
@@ -323,10 +342,26 @@ export function actionBuyBuilding(state: GameState, buildingIndex: number): Game
 
   p.money -= tile.cost;
   p.buildings = [...p.buildings, tile];
+  if (tile.bpTag && !p.activeBpBuildingId) p.activeBpBuildingId = tile.id;
   s.buildingOffer = s.buildingOffer.filter((_, i) => i !== buildingIndex);
-  if (s.buildingStack.length > 0) {
-    s.buildingOffer.push(s.buildingStack.shift()!);
-  }
+  s.actionTakenThisTurn = true;
+  return s;
+}
+
+export function actionUpgradeBBuilding(state: GameState, buildingId: string): GameState {
+  if (state.phase !== 'playing') return state;
+  const s = { ...state, players: state.players.map(x => ({ ...x })) };
+  const p = s.players[s.currentPlayerIndex];
+  const building = p.buildings.find(b => b.id === buildingId);
+  if (!building?.bpTag || !building.bpUpgradeToId || building.bpLevel !== 1) return state;
+  const upgradeCost = building.upgradeCost ?? 0;
+  if (p.money < upgradeCost) return state;
+  const level2Tile = getBuildingTileById(building.bpUpgradeToId);
+  if (!level2Tile) return state;
+
+  p.money -= upgradeCost;
+  p.buildings = p.buildings.map(b => b.id === buildingId ? level2Tile : b);
+  if (p.activeBpBuildingId === buildingId) p.activeBpBuildingId = level2Tile.id;
   s.actionTakenThisTurn = true;
   return s;
 }
@@ -381,6 +416,10 @@ export function actionEndTurn(state: GameState): GameState {
   if (total > maxStorage) {
     s.phase = 'discardDown';
     return s;
+  }
+
+  while (s.buildingOffer.length < 4 && s.buildingStack.length > 0) {
+    s.buildingOffer.push(s.buildingStack.shift()!);
   }
 
   s.currentPlayerIndex = (s.currentPlayerIndex + 1) % s.numPlayers;
@@ -456,6 +495,16 @@ export function formatActionMessage(
       const building = useState.buildingOffer[action.buildingIndex as number]
       return building ? `Bought ${building.name} for $${building.cost}` : 'Bought building'
     }
+    case 'upgradeBBuilding': {
+      const prev = prevState ?? state
+      const b = prev.players[prev.currentPlayerIndex]?.buildings.find((x: { id: string }) => x.id === action.buildingId)
+      if (b?.bpUpgradeToId) {
+        const level2 = getBuildingTileById(b.bpUpgradeToId)
+        return level2 ? `Upgraded to ${level2.name}` : `Upgraded ${b.name} to +2`
+      }
+      const level2InState = state.players[state.currentPlayerIndex]?.buildings.find((x: { bpUpgradeFromId?: string }) => x.bpUpgradeFromId === action.buildingId)
+      return level2InState ? `Upgraded to ${level2InState.name}` : 'Upgraded B building'
+    }
     case 'buyTown': {
       const town = useState.currentTown
       if (!town) return 'Bought town'
@@ -482,6 +531,7 @@ export type GameAction =
   | { type: 'sell'; commodity: Commodity; quantity: number }
   | { type: 'discard'; commodity: Commodity }
   | { type: 'buyBuilding'; buildingIndex: number }
+  | { type: 'upgradeBBuilding'; buildingId: string }
   | { type: 'buyTown'; useSpecific: boolean }
   | { type: 'startAuction'; railroadIndex: number }
   | { type: 'placeBid'; amount: number }
@@ -498,6 +548,8 @@ export function applyGameAction(state: GameState, action: GameAction): GameState
       return actionDiscard(state, action.commodity)
     case 'buyBuilding':
       return actionBuyBuilding(state, action.buildingIndex)
+    case 'upgradeBBuilding':
+      return actionUpgradeBBuilding(state, action.buildingId)
     case 'buyTown':
       return actionBuyTown(state, action.useSpecific)
     case 'startAuction':

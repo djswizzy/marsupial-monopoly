@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { flushSync } from 'react-dom'
-import type { GameState } from './types'
+import type { GameState, BuildingTile } from './types'
 import type { GameAction } from './gameLogic'
-import { COMMODITY_NAMES, COMMODITY_EMOJI } from './data/cards'
-import { COMMODITIES, actionProduction, actionBuyTown, actionBuyBuilding, startAuction, placeBid, passAuction, actionSell, actionDiscard, actionEndTurn, cloneGameState, getMaxProduction, getProductionList } from './gameLogic'
+import { COMMODITY_NAMES, COMMODITY_EMOJI, getBuildingTileById } from './data/cards'
+import { COMMODITIES, actionProduction, actionBuyTown, actionBuyBuilding, actionUpgradeBBuilding, startAuction, placeBid, passAuction, actionSell, actionDiscard, actionEndTurn, cloneGameState, getMaxProduction, getProductionList } from './gameLogic'
 import { MarketStrip } from './MarketStrip'
 import { DiscardDownPanel } from './DiscardDownPanel'
 import { RailroadOffer, formatRailroadVpSchedule } from './RailroadOffer'
 import { TownCard } from './TownCard'
-import { BuildingOffer } from './BuildingOffer'
+import { BuildingOffer, BuildingInfoModal } from './BuildingOffer'
 import { PlayerHand } from './PlayerHand'
 import { AuctionPanel } from './AuctionPanel'
 import { SellPanel } from './SellPanel'
@@ -60,6 +60,16 @@ function formatActionMessage(action: GameAction, state: GameState, prevState?: G
       const building = useState.buildingOffer[action.buildingIndex]
       return building ? `Bought ${building.name} for $${building.cost}` : 'Bought building'
     }
+    case 'upgradeBBuilding': {
+      const prev = prevState ?? state
+      const b = prev.players[prev.currentPlayerIndex]?.buildings.find(x => x.id === action.buildingId)
+      if (b?.bpUpgradeToId) {
+        const level2 = getBuildingTileById(b.bpUpgradeToId)
+        return level2 ? `Upgraded to ${level2.name}` : `Upgraded ${b.name} to +2`
+      }
+      const level2InState = state.players[state.currentPlayerIndex]?.buildings.find(x => x.bpUpgradeFromId === action.buildingId)
+      return level2InState ? `Upgraded to ${level2InState.name}` : 'Upgraded B building'
+    }
     case 'buyTown': {
       const town = useState.currentTown
       if (!town) return 'Bought town'
@@ -82,6 +92,7 @@ function formatActionMessage(action: GameAction, state: GameState, prevState?: G
 
 export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEntries }: Props) {
   const [showSellPanel, setShowSellPanel] = useState(false)
+  const [infoBuilding, setInfoBuilding] = useState<BuildingTile | null>(null)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [productionSelection, setProductionSelection] = useState<number[]>([])
   const [stateBeforeAction, setStateBeforeAction] = useState<GameState | null>(null)
@@ -208,6 +219,20 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
       setState(nextState)
     }
     setPendingAction(null)
+  }
+
+  function upgradeBBuilding(buildingId: string) {
+    const action: GameAction = { type: 'upgradeBBuilding', buildingId }
+    if (dispatch) {
+      addTurnAction(action, state.currentPlayerIndex)
+      dispatch(action)
+    } else {
+      setStateBeforeAction(cloneGameState(state))
+      addTurnAction(action, state.currentPlayerIndex)
+      const nextState = actionUpgradeBBuilding(state, buildingId)
+      prevStateRef.current = state
+      setState(nextState)
+    }
   }
 
   function playProduction(cardIndex: number) {
@@ -360,6 +385,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
                   currentPlayerMoney={current.money}
                   selectedBuildingIndex={pendingAction?.type === 'buyBuilding' ? pendingAction.buildingIndex : null}
                   selectionDisabled={!isMyTurn || actionTakenThisTurn}
+                  onOpenBuildingInfo={setInfoBuilding}
                 />
               </section>
             </div>
@@ -431,8 +457,29 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
             <ul className="sidebar-buildings">
               {me.buildings.map(b => (
                 <li key={b.id} className="sidebar-building" title={b.description}>
-                  <span className="sidebar-building-name">{b.name}</span>
-                  <span className="sidebar-building-desc">{b.description}</span>
+                  <div className="sidebar-building-text">
+                    <span className="sidebar-building-name">{b.name}</span>
+                    <span className="sidebar-building-desc">{b.description}</span>
+                  </div>
+                  <div className="sidebar-building-actions">
+                    {b.bpUpgradeToId != null && b.upgradeCost != null && isMyTurn && !actionTakenThisTurn && current.money >= b.upgradeCost && (
+                      <button
+                        type="button"
+                        className="sidebar-building-upgrade"
+                        onClick={() => upgradeBBuilding(b.id)}
+                      >
+                        Upgrade ${b.upgradeCost}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="sidebar-building-info"
+                      aria-label="Full effect"
+                      onClick={() => setInfoBuilding(b)}
+                    >
+                      i
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -472,6 +519,9 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
       <PlayerPanel state={state} />
       </div>
 
+      {infoBuilding && (
+        <BuildingInfoModal building={infoBuilding} onClose={() => setInfoBuilding(null)} />
+      )}
       {showSellPanel && (
         <SellPanel
           commodities={me.commodities}
@@ -670,6 +720,35 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
           border-radius: 4px;
           font-size: 0.8rem;
         }
+        .game-sidebar .sidebar-building {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.35rem;
+        }
+        .game-sidebar .sidebar-building-text {
+          flex: 1;
+          min-width: 0;
+        }
+        .game-sidebar .sidebar-building-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          flex-shrink: 0;
+        }
+        .game-sidebar .sidebar-building-upgrade {
+          font-size: 0.7rem;
+          padding: 0.2rem 0.4rem;
+          border-radius: 3px;
+          border: 1px solid var(--accent);
+          background: transparent;
+          color: var(--accent);
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .game-sidebar .sidebar-building-upgrade:hover {
+          background: var(--accent);
+          color: white;
+        }
         .game-sidebar .sidebar-item-name,
         .game-sidebar .sidebar-building-name {
           font-weight: 600;
@@ -682,6 +761,26 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
         .game-sidebar .sidebar-building-desc {
           font-size: 0.75rem;
           color: var(--text-muted);
+        }
+        .game-sidebar .sidebar-building-info {
+          flex-shrink: 0;
+          width: 1.25rem;
+          height: 1.25rem;
+          padding: 0;
+          border: none;
+          border-radius: 3px;
+          background: var(--surface3);
+          color: var(--text);
+          font-size: 0.75rem;
+          font-style: italic;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .game-sidebar .sidebar-building-info:hover {
+          background: var(--accent);
+          color: white;
         }
         .sidebar-end-actions {
           margin-top: auto;

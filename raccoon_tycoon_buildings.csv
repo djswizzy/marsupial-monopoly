@@ -1,0 +1,33 @@
+Building name,Building Effect,building cost,P/B
+Wheat Field (B),+1 Wheat,$4.00,B
+Grain Farm (B),+2 Wheat,$9.00,B
+Lumber Yard (B),+1 Wood,$4.00,B
+Saw Mill (B),+2 Wood,$9.00,B
+Coal Deposit (B),+1 Coal,$5.00,B
+Coal Mine (B),+2 Coal,$12.00,B
+Iron Deposit (B),+1 Iron,$5.00,B
+Iron Mine (B),+2 Iron,$12.00,B
+Tool & Die (B),+1 Goods,$6.00,B
+Loom (B),+2 Goods,$15.00,B
+Vineyard (B),+1 Luxury,$6.00,B
+Glass Works (B),+2 Luxury,$15.00,B
+Machine Shop (B),+1 Commodity of your choice,$30.00,B
+Water Mill (B_),+2 Commodities of your choice,$60.00,B
+Lumber/ Wheat Trading Firm,You get $1/ unit of Wood or Wheat that is sold by any player.,$10.00,
+Goods Luxury Trading Firm,You get $1/ unit of Goods or Luxury that is sold by any player.,$10.00,
+Coal / Iron Trading Firm,You get $1/ unit of Coal or Iron that is sold by any player.,$10.00,
+Warehouse (x2),You may store an extra 3 Commodity Tokens.,$10.00,
+Construction Company,You may perform two Purchase Building actions in one turn.,$20.00,
+Freight Company,You may sell 2 Commodities in one turn.,$25.00,
+Governor's Mansion,Each Town Card you own is worth +1 VP at the end of the game.,$30.00,
+Rail Baron,Each of your Railroad Cards is worth +1 VP at the end of the game.,$30.00,
+Bank,Each $20 that you have at the end of the game is worth +1 VP.,$30.00,
+Auction House,"You get $5 commission for each auction that is held. This is paid from the bank, not the player.",$15.00,
+Smuggler,Your hand limit of Price & Production cards is increased to 4.,$20.00,
+Black Market,Your hand limit of Price & Production cards is increased to 5.,$30.00,
+Brick Works,You may build Towns with one fewer Commodity.,$25.00,
+Mayor's Office,Each Building you own is worth +1 VP at the end of the game.,$30.00,
+Trading Floor,"When using the 'Produce' action, you may also buy any number of one Commodity currently owned by one other player at the current market price (before the price is affected by the Price & Production card). They may not refuse.",$15.00,
+Export Company,"When selling a Commodity, you may increase the price of that Commodity by $3 before selling. Maximum Price is limited to the value shown on the board for that Commodity.",$30.00,
+Cottage Industry (p),You may produce up to four (4) of the Commodity Tokens shown in the Production area of a Price/ Production Card.,$30.00,P
+Factory (x2) (p),You may produce up to five (5) of the Commodity Tokens shown in the Production area of a Price/ Production Card.,$40.00,P

@@ -22,27 +22,24 @@ export interface TownCard {
   costAny: number; // OR this many of any mix
 }
 
-export type BuildingId =
-  | 'cottage'      // +1 max production (4 instead of 3)
-  | 'factory'     // +2 max production (5)
-  | 'smuggler'    // hand size 4
-  | 'blackmarket' // hand size 5
-  | 'warehouse'   // +4 storage (on top of +1 per building)
-  | 'wheat1' | 'wheat2' | 'wood1' | 'wood2' | 'iron1' | 'iron2'
-  | 'coal1' | 'coal2' | 'goods1' | 'goods2' | 'luxury1' | 'luxury2'
-  | 'machineshop'; // double-sided +1/+2
+export type BuildingId = string;
 
 export interface BuildingTile {
   id: BuildingId;
   name: string;
   cost: number;
   description: string;
-  upgradeCost?: number; // for +1/+2 tiles
+  upgradeCost?: number;
   commodityBonus?: Commodity;
   bonusValue?: 1 | 2;
   productionLimit?: number;
   handSize?: number;
   storageBonus?: number;
+  bpTag?: boolean;
+  bpLevel?: 1 | 2;
+  bpUpgradeToId?: string;
+  bpUpgradeFromId?: string;
+  anyCommodityBonus?: number;
 }
 
 export interface Player {
@@ -54,6 +51,7 @@ export interface Player {
   railroads: RailroadCard[];
   towns: TownCard[];
   buildings: BuildingTile[];
+  activeBpBuildingId?: string;
 }
 
 export type Market = Record<Commodity, number>;

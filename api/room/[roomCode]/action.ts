@@ -6,6 +6,7 @@ import {
   actionSell,
   actionDiscard,
   actionBuyBuilding,
+  actionUpgradeBBuilding,
   actionBuyTown,
   startAuction,
   placeBid,
@@ -48,6 +49,8 @@ function applyAction(state: GameState, type: string, payload: Record<string, unk
       return actionDiscard(state, payload.commodity as Parameters<typeof actionDiscard>[1])
     case 'buyBuilding':
       return actionBuyBuilding(state, payload.buildingIndex as number)
+    case 'upgradeBBuilding':
+      return actionUpgradeBBuilding(state, payload.buildingId as string)
     case 'buyTown':
       return actionBuyTown(state, payload.useSpecific as boolean)
     case 'startAuction':

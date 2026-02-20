@@ -23,27 +23,29 @@ export interface TownCard {
   costAny: number; // OR this many of any mix
 }
 
-export type BuildingId =
-  | 'cottage'      // +1 max production (4 instead of 3)
-  | 'factory'     // +2 max production (5)
-  | 'smuggler'    // hand size 4
-  | 'blackmarket' // hand size 5
-  | 'warehouse'   // +4 storage (on top of +1 per building)
-  | 'wheat1' | 'wheat2' | 'wood1' | 'wood2' | 'iron1' | 'iron2'
-  | 'coal1' | 'coal2' | 'goods1' | 'goods2' | 'luxury1' | 'luxury2'
-  | 'machineshop'; // double-sided +1/+2
+export type BuildingId = string;
 
 export interface BuildingTile {
   id: BuildingId;
   name: string;
   cost: number;
   description: string;
-  upgradeCost?: number; // for +1/+2 tiles
+  upgradeCost?: number;
   commodityBonus?: Commodity;
   bonusValue?: 1 | 2;
   productionLimit?: number;
   handSize?: number;
   storageBonus?: number;
+  /** If true, player may only use one B/P building's effect at a time (tracked by activeBpBuildingId). */
+  bpTag?: boolean;
+  /** B/P card side: 1 = front (+1), 2 = back (+2). Only B/P cards have this. */
+  bpLevel?: 1 | 2;
+  /** Level-1 only: building id of the +2 side (upgrade target). */
+  bpUpgradeToId?: string;
+  /** Level-2 only: building id of the +1 side (this was upgraded from). */
+  bpUpgradeFromId?: string;
+  /** +N of any commodity when producing (player chooses). */
+  anyCommodityBonus?: number;
 }
 
 export interface Player {
@@ -55,6 +57,8 @@ export interface Player {
   railroads: RailroadCard[];
   towns: TownCard[];
   buildings: BuildingTile[];
+  /** When player has multiple B/P buildings, which one is currently active (only its effect applies). */
+  activeBpBuildingId?: string;
 }
 
 export type Market = Record<Commodity, number>;

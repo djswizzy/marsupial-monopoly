@@ -9,6 +9,7 @@ import {
   actionSell,
   actionDiscard,
   actionBuyBuilding,
+  actionUpgradeBBuilding,
   actionBuyTown,
   startAuction,
   placeBid,
@@ -167,6 +168,8 @@ io.on('connection', (socket) => {
             return actionDiscard(s, p.commodity as Parameters<typeof actionDiscard>[1])
           case 'buyBuilding':
             return actionBuyBuilding(s, p.buildingIndex as number)
+          case 'upgradeBBuilding':
+            return actionUpgradeBBuilding(s, p.buildingId as string)
           case 'buyTown':
             return actionBuyTown(s, p.useSpecific as boolean)
           case 'startAuction':

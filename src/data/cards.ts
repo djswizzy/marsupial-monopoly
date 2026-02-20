@@ -117,24 +117,69 @@ export const COMMODITY_EMOJI: Record<Commodity, string> = {
   luxury: '💎',
 };
 
+/** Building tiles from Raccoon Tycoon. B/P = only one B/P effect at a time. B cards are double-sided: front +1, back +2; only the front is in the deck; player can pay to upgrade. */
+const BUILDING_TILES: BuildingTile[] = [
+  // B cards: 6 (or 7) physical cards, two sides each. Front (+1) in deck; back (+2) obtained by upgrade.
+  { id: 'wheat-field-b', name: 'Wheat Field (B)', cost: 4, description: '+1 Wheat', commodityBonus: 'wheat', bonusValue: 1, bpTag: true, bpLevel: 1, upgradeCost: 5, bpUpgradeToId: 'grain-farm-b' },
+  { id: 'grain-farm-b', name: 'Grain Farm (B)', cost: 9, description: '+2 Wheat', commodityBonus: 'wheat', bonusValue: 2, bpTag: true, bpLevel: 2, bpUpgradeFromId: 'wheat-field-b' },
+  { id: 'lumber-yard-b', name: 'Lumber Yard (B)', cost: 4, description: '+1 Wood', commodityBonus: 'wood', bonusValue: 1, bpTag: true, bpLevel: 1, upgradeCost: 5, bpUpgradeToId: 'saw-mill-b' },
+  { id: 'saw-mill-b', name: 'Saw Mill (B)', cost: 9, description: '+2 Wood', commodityBonus: 'wood', bonusValue: 2, bpTag: true, bpLevel: 2, bpUpgradeFromId: 'lumber-yard-b' },
+  { id: 'coal-deposit-b', name: 'Coal Deposit (B)', cost: 5, description: '+1 Coal', commodityBonus: 'coal', bonusValue: 1, bpTag: true, bpLevel: 1, upgradeCost: 7, bpUpgradeToId: 'coal-mine-b' },
+  { id: 'coal-mine-b', name: 'Coal Mine (B)', cost: 12, description: '+2 Coal', commodityBonus: 'coal', bonusValue: 2, bpTag: true, bpLevel: 2, bpUpgradeFromId: 'coal-deposit-b' },
+  { id: 'iron-deposit-b', name: 'Iron Deposit (B)', cost: 5, description: '+1 Iron', commodityBonus: 'iron', bonusValue: 1, bpTag: true, bpLevel: 1, upgradeCost: 7, bpUpgradeToId: 'iron-mine-b' },
+  { id: 'iron-mine-b', name: 'Iron Mine (B)', cost: 12, description: '+2 Iron', commodityBonus: 'iron', bonusValue: 2, bpTag: true, bpLevel: 2, bpUpgradeFromId: 'iron-deposit-b' },
+  { id: 'tool-die-b', name: 'Tool & Die (B)', cost: 6, description: '+1 Goods', commodityBonus: 'goods', bonusValue: 1, bpTag: true, bpLevel: 1, upgradeCost: 9, bpUpgradeToId: 'loom-b' },
+  { id: 'loom-b', name: 'Loom (B)', cost: 15, description: '+2 Goods', commodityBonus: 'goods', bonusValue: 2, bpTag: true, bpLevel: 2, bpUpgradeFromId: 'tool-die-b' },
+  { id: 'vineyard-b', name: 'Vineyard (B)', cost: 6, description: '+1 Luxury', commodityBonus: 'luxury', bonusValue: 1, bpTag: true, bpLevel: 1, upgradeCost: 9, bpUpgradeToId: 'glass-works-b' },
+  { id: 'glass-works-b', name: 'Glass Works (B)', cost: 15, description: '+2 Luxury', commodityBonus: 'luxury', bonusValue: 2, bpTag: true, bpLevel: 2, bpUpgradeFromId: 'vineyard-b' },
+  { id: 'machine-shop-b', name: 'Machine Shop (B)', cost: 30, description: '+1 Commodity of your choice', anyCommodityBonus: 1, bpTag: true, bpLevel: 1, upgradeCost: 30, bpUpgradeToId: 'water-mill-b' },
+  { id: 'water-mill-b', name: 'Water Mill (B)', cost: 60, description: '+2 Commodities of your choice', anyCommodityBonus: 2, bpTag: true, bpLevel: 2, bpUpgradeFromId: 'machine-shop-b' },
+  { id: 'lumber-wheat-trading-firm', name: 'Lumber/ Wheat Trading Firm', cost: 10, description: 'You get $1/ unit of Wood or Wheat that is sold by any player.' },
+  { id: 'goods-luxury-trading-firm', name: 'Goods Luxury Trading Firm', cost: 10, description: 'You get $1/ unit of Goods or Luxury that is sold by any player.' },
+  { id: 'coal-iron-trading-firm', name: 'Coal / Iron Trading Firm', cost: 10, description: 'You get $1/ unit of Coal or Iron that is sold by any player.' },
+  { id: 'warehouse-x2', name: 'Warehouse (x2)', cost: 10, description: 'You may store an extra 3 Commodity Tokens.', storageBonus: 3 },
+  { id: 'construction-company', name: 'Construction Company', cost: 20, description: 'You may perform two Purchase Building actions in one turn.' },
+  { id: 'freight-company', name: 'Freight Company', cost: 25, description: 'You may sell 2 Commodities in one turn.' },
+  { id: 'governors-mansion', name: "Governor's Mansion", cost: 30, description: 'Each Town Card you own is worth +1 VP at the end of the game.' },
+  { id: 'rail-baron', name: 'Rail Baron', cost: 30, description: 'Each of your Railroad Cards is worth +1 VP at the end of the game.' },
+  { id: 'bank', name: 'Bank', cost: 30, description: 'Each $20 that you have at the end of the game is worth +1 VP.' },
+  { id: 'auction-house', name: 'Auction House', cost: 15, description: 'You get $5 commission for each auction that is held. This is paid from the bank, not the player.' },
+  { id: 'smuggler', name: 'Smuggler', cost: 20, description: 'Your hand limit of Price & Production cards is increased to 4.', handSize: 4 },
+  { id: 'black-market', name: 'Black Market', cost: 30, description: 'Your hand limit of Price & Production cards is increased to 5.', handSize: 5 },
+  { id: 'brick-works', name: 'Brick Works', cost: 25, description: 'You may build Towns with one fewer Commodity.' },
+  { id: 'mayors-office', name: "Mayor's Office", cost: 30, description: 'Each Building you own is worth +1 VP at the end of the game.' },
+  { id: 'trading-floor', name: 'Trading Floor', cost: 15, description: "When using the 'Produce' action, you may also buy any number of one Commodity currently owned by one other player at the current market price (before the price is affected by the Price & Production card). They may not refuse." },
+  { id: 'export-company', name: 'Export Company', cost: 30, description: "When selling a Commodity, you may increase the price of that Commodity by $3 before selling. Maximum Price is limited to the value shown on the board for that Commodity." },
+  { id: 'cottage-industry-p', name: 'Cottage Industry (p)', cost: 30, description: 'You may produce up to four (4) of the Commodity Tokens shown in the Production area of a Price/ Production Card.', productionLimit: 4, bpTag: true },
+  { id: 'factory-x2-p', name: 'Factory (x2) (p)', cost: 40, description: 'You may produce up to five (5) of the Commodity Tokens shown in the Production area of a Price/ Production Card.', productionLimit: 5, bpTag: true },
+];
+
+/** Level-1 B card tiles (7 types); only 4 are used per game. */
+const B_LEVEL1_TILES = BUILDING_TILES.filter(t => t.bpLevel === 1 && t.bpUpgradeToId);
+
+/** Non-B buildings (shuffled into the stack; refill offer from this). */
+const NON_B_TILES = BUILDING_TILES.filter(t => !t.bpTag);
+
+/**
+ * Per game: pick a random 4 of the 7 B card types for the initial offer; the rest of the deck is non-B buildings only.
+ * Initial building offer = those 4 B cards. Stack = shuffled non-B buildings (refill from here).
+ */
+export function createBuildingDeckForGame(): { initialOffer: BuildingTile[]; buildingStack: BuildingTile[] } {
+  const bPool = shuffle([...B_LEVEL1_TILES]);
+  const initialOffer = bPool.slice(0, 4);
+  const buildingStack = shuffle([...NON_B_TILES]);
+  return { initialOffer, buildingStack };
+}
+
+/** Only front sides of B cards (+1) go in the deck; back sides (+2) are obtained by upgrade. (Legacy: single shuffled deck.) */
 export function createBuildingTiles(): BuildingTile[] {
-  const basic: BuildingTile[] = [
-    { id: 'wheat1', name: 'Wheat Field', cost: 4, description: '+1 Wheat when producing', commodityBonus: 'wheat', bonusValue: 1, upgradeCost: 3 },
-    { id: 'wood1', name: 'Sawmill', cost: 4, description: '+1 Wood when producing', commodityBonus: 'wood', bonusValue: 1, upgradeCost: 3 },
-    { id: 'iron1', name: 'Ironworks', cost: 4, description: '+1 Iron when producing', commodityBonus: 'iron', bonusValue: 1, upgradeCost: 3 },
-    { id: 'coal1', name: 'Coal Deposit', cost: 4, description: '+1 Coal when producing', commodityBonus: 'coal', bonusValue: 1, upgradeCost: 3 },
-    { id: 'goods1', name: 'Workshop', cost: 4, description: '+1 Goods when producing', commodityBonus: 'goods', bonusValue: 1, upgradeCost: 3 },
-    { id: 'luxury1', name: 'Boutique', cost: 4, description: '+1 Luxury when producing', commodityBonus: 'luxury', bonusValue: 1, upgradeCost: 3 },
-  ];
-  const advanced: BuildingTile[] = [
-    { id: 'cottage', name: 'Cottage Industry', cost: 6, description: 'Produce up to 4 commodities', productionLimit: 4 },
-    { id: 'factory', name: 'Factory', cost: 8, description: 'Produce up to 5 commodities', productionLimit: 5 },
-    { id: 'smuggler', name: 'Smuggler', cost: 5, description: 'Hand size 4', handSize: 4 },
-    { id: 'blackmarket', name: 'Black Market', cost: 7, description: 'Hand size 5', handSize: 5 },
-    { id: 'warehouse', name: 'Warehouse', cost: 6, description: '+4 storage', storageBonus: 4 },
-    { id: 'machineshop', name: 'Machine Shop', cost: 5, description: '+1 any commodity when producing', upgradeCost: 4 },
-  ];
-  return shuffle([...basic, ...advanced]);
+  const forDeck = BUILDING_TILES.filter(t => !t.bpUpgradeFromId);
+  return shuffle([...forDeck]);
+}
+
+/** Look up any building tile by id (including level-2 B sides, for upgrades). */
+export function getBuildingTileById(id: string): BuildingTile | undefined {
+  return BUILDING_TILES.find(t => t.id === id);
 }
 
 function shuffle<T>(arr: T[]): T[] {
