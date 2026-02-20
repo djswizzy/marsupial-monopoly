@@ -39,7 +39,8 @@ export function LobbyScreen({ onPlayLocal, onCreateRoom, onJoinRoom }: Props) {
         })
         if (!res.ok) {
           const data = await safeJson<{ error?: string }>(res).catch(() => ({}))
-          throw new Error(data?.error || `Server error: ${res.status} ${res.statusText}`)
+          const errMsg = typeof data === 'object' && data !== null && 'error' in data ? data.error : undefined
+          throw new Error(errMsg || `Server error: ${res.status} ${res.statusText}`)
         }
         const data = await safeJson<{ roomCode: string; playerId: string; playerIndex: number }>(res)
         onCreateRoom(data.roomCode, data.playerId, data.playerIndex)
@@ -70,7 +71,8 @@ export function LobbyScreen({ onPlayLocal, onCreateRoom, onJoinRoom }: Props) {
         })
         if (!res.ok) {
           const data = await safeJson<{ error?: string }>(res).catch(() => ({}))
-          throw new Error(data?.error || `Server error: ${res.status} ${res.statusText}`)
+          const errMsg = typeof data === 'object' && data !== null && 'error' in data ? data.error : undefined
+          throw new Error(errMsg || `Server error: ${res.status} ${res.statusText}`)
         }
         const data = await safeJson<{ roomCode: string; playerId: string; playerIndex: number }>(res)
         onJoinRoom(data.roomCode, data.playerId, data.playerIndex)

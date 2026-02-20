@@ -54,7 +54,7 @@ export function OnlineGameRoom({
             return
           }
           const data = await safeJson<{ gameState?: GameState; gameLog?: LogEntry[] }>(res)
-          setState(data.gameState ?? data)
+          if (data.gameState != null) setState(data.gameState)
           if (Array.isArray(data.gameLog)) setServerLogEntries(data.gameLog)
         })
       } catch (err) {
