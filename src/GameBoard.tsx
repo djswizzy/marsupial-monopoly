@@ -11,7 +11,7 @@ import { BuildingOffer } from './BuildingOffer'
 import { PlayerHand } from './PlayerHand'
 import { AuctionPanel } from './AuctionPanel'
 import { SellPanel } from './SellPanel'
-import { GameLog, type LogEntry } from './GameLog'
+import { GameLog, getPlayerColor, type LogEntry } from './GameLog'
 import { PlayerPanel } from './PlayerPanel'
 import type { PendingAction } from './ActionBar'
 
@@ -20,6 +20,7 @@ type Props = {
   setState: (s: GameState) => void
   dispatch?: (action: GameAction, applyFirst?: GameAction) => void
   playerIndex?: number
+  serverLogEntries?: LogEntry[]
 }
 
 function samePending(a: PendingAction | null, b: PendingAction): boolean {
@@ -78,7 +79,7 @@ function formatActionMessage(action: GameAction, state: GameState, prevState?: G
   }
 }
 
-export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
+export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEntries }: Props) {
   const [showSellPanel, setShowSellPanel] = useState(false)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [productionSelection, setProductionSelection] = useState<number[]>([])
@@ -86,6 +87,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
   const [stateBeforeAuction, setStateBeforeAuction] = useState<GameState | null>(null)
   const [logEntries, setLogEntries] = useState<LogEntry[]>([])
   const [turnActions, setTurnActions] = useState<Array<{ action: GameAction; playerIdx: number }>>([])
+  const turnActionsRef = useRef<Array<{ action: GameAction; playerIdx: number }>>([])
   const prevStateRef = useRef<GameState>(state)
   const isOnline = !!dispatch && playerIndex !== undefined
   const me = isOnline ? state.players[playerIndex] : state.players[state.currentPlayerIndex]
@@ -97,6 +99,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
   useEffect(() => {
     if (state.phase === 'playing' && prevStateRef.current.phase !== 'playing') {
       setLogEntries([])
+      turnActionsRef.current = []
       setTurnActions([])
     }
     prevStateRef.current = state
@@ -105,30 +108,35 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
   // Clear turn actions when turn changes
   useEffect(() => {
     if (prevStateRef.current.currentPlayerIndex !== state.currentPlayerIndex && prevStateRef.current.currentPlayerIndex !== undefined) {
+      turnActionsRef.current = []
       setTurnActions([])
     }
     prevStateRef.current = state
   }, [state.currentPlayerIndex])
 
   function addTurnAction(action: GameAction, playerIdx: number) {
-    setTurnActions(prev => [...prev, { action, playerIdx }])
+    const entry = { action, playerIdx }
+    turnActionsRef.current = [...turnActionsRef.current, entry]
+    setTurnActions(prev => [...prev, entry])
   }
 
   function logTurnActions() {
-    if (turnActions.length === 0) return
-    
-    const playerIdx = turnActions[0].playerIdx
-    const entries: LogEntry[] = turnActions.map(({ action }, idx) => {
+    const actions = turnActionsRef.current.filter(({ action }) => action.type !== 'endTurn')
+    if (actions.length === 0) return
+
+    const playerIdx = actions[0].playerIdx
+    const entries: LogEntry[] = actions.map(({ action }, idx) => {
       const message = formatActionMessage(action, state, prevStateRef.current)
       return {
         id: `${Date.now()}-${idx}-${Math.random()}`,
         playerIndex: playerIdx,
         message,
-        timestamp: Date.now() + idx, // Slight offset to maintain order
+        timestamp: Date.now() + idx,
       }
     })
-    
+
     setLogEntries(prev => [...prev, ...entries])
+    turnActionsRef.current = []
     setTurnActions([])
   }
 
@@ -293,7 +301,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
         <h1>Marsupial Monopoly</h1>
         <div className="current-turn">
           <span className="label">{isOnline ? (isMyTurn ? 'Your turn' : "Opponent's turn") : 'Current turn'}</span>
-          <span className="player-name">{current.name}{isOnline && isMyTurn ? ' (you)' : ''}</span>
+          <span className="player-name" style={{ color: getPlayerColor(state.currentPlayerIndex) }}>{current.name}{isOnline && isMyTurn ? ' (you)' : ''}</span>
         </div>
       </header>
 
@@ -306,8 +314,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
           <div className="below-market-row">
             <div className="game-main-left">
               <section className="offer-row">
-                <div className="railroad-offer-with-deck">
-                  <h3 className="offer-section-title">Railroads (auction)</h3>
+                <div className="railroad-offer-with-deck content-box-over-bg content-box-railroad">
                   <div className="offer-deck-and-cards">
                     <div className="deck-pile" title="Railroad deck">
                       <div className="deck-card-back" aria-hidden />
@@ -326,8 +333,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
                     />
                   </div>
                 </div>
-                <div className="town-offer-with-deck">
-                  <h3 className="offer-section-title">Town</h3>
+                <div className="town-offer-with-deck content-box-over-bg content-box-town">
                   <div className="offer-deck-and-cards">
                     <div className="deck-pile" title="Town deck">
                       <div className="deck-card-back" aria-hidden />
@@ -352,7 +358,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
                   </div>
                 </div>
               </section>
-              <section className="buildings-section">
+              <section className="buildings-section content-box-over-bg">
                 <BuildingOffer
                   buildings={state.buildingOffer}
                   onSelect={(idx) => togglePending({ type: 'buyBuilding', buildingIndex: idx })}
@@ -462,7 +468,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
           </button>
         )}
       </aside>
-      <GameLog state={state} entries={logEntries} />
+      <GameLog state={state} entries={serverLogEntries ?? logEntries} />
       <PlayerPanel state={state} />
       </div>
 
@@ -577,7 +583,6 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
         .sidebar-money {
           font-size: 1.5rem;
           font-weight: 700;
-          color: var(--accent);
         }
         .game-sidebar .commodities-list {
           display: flex;
@@ -645,6 +650,11 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
           margin-bottom: 1rem;
           flex-wrap: wrap;
           gap: 0.75rem;
+          background: rgba(61, 37, 32, 0.94);
+          border: 2px solid var(--border);
+          border-radius: 12px;
+          padding: 0.75rem 1rem;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
         }
         .game-header h1 {
           font-size: 1.5rem;
@@ -724,7 +734,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
         }
         .town-slot {
           flex: 1;
-          min-width: 200px;
+          min-width: 100px;
         }
         .buildings-section h3 {
           font-size: 0.9rem;
@@ -753,6 +763,7 @@ export function GameBoard({ state, setState, dispatch, playerIndex }: Props) {
         }
         .buildings-section {
           flex-shrink: 0;
+          max-width: 640px;
         }
         .player-area {
           flex: 1;

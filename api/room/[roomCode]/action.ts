@@ -11,12 +11,31 @@ import {
   placeBid,
   passAuction,
   actionEndTurn,
+  formatActionMessage,
 } from '../../../lib/gameLogic.js'
+
+interface LogEntry {
+  id: string
+  playerIndex: number
+  message: string
+  timestamp: number
+}
 
 interface RoomData {
   players: Array<{ id: string; name: string; index: number }>
   gameState: GameState | null
+  gameLog: LogEntry[]
   status: 'waiting' | 'playing'
+}
+
+function pushLogEntry(roomData: RoomData, playerIndex: number, type: string, payload: Record<string, unknown>, stateBefore: GameState, stateAfter: GameState) {
+  const message = formatActionMessage({ type, ...payload }, stateAfter, stateBefore)
+  roomData.gameLog.push({
+    id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    playerIndex,
+    message,
+    timestamp: Date.now(),
+  })
 }
 
 function applyAction(state: GameState, type: string, payload: Record<string, unknown>): GameState {
@@ -81,14 +100,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    if (!roomData.gameLog) roomData.gameLog = []
     let nextState = roomData.gameState
     if (applyFirst) {
-      nextState = applyAction(nextState, applyFirst.type, applyFirst.payload)
+      const stateAfterFirst = applyAction(nextState, applyFirst.type, applyFirst.payload)
+      if (applyFirst.type !== 'endTurn') {
+        pushLogEntry(roomData, player.index, applyFirst.type, applyFirst.payload, nextState, stateAfterFirst)
+      }
+      nextState = stateAfterFirst
     }
+    const stateBeforeMain = nextState
     nextState = applyAction(nextState, type, payload)
+    if (type !== 'endTurn') {
+      pushLogEntry(roomData, player.index, type, payload, stateBeforeMain, nextState)
+    }
     roomData.gameState = nextState
     setGameState(roomCode, roomData)
-    return res.status(200).json(nextState)
+    return res.status(200).json({ gameState: nextState, gameLog: roomData.gameLog })
   } catch (e) {
     return res.status(400).json({ error: (e as Error)?.message || 'Action failed' })
   }

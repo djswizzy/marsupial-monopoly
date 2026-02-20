@@ -80,7 +80,7 @@ export function RoomWaitingScreen({
 
   return (
     <div className="room-waiting">
-      <div className="room-waiting-inner">
+      <div className="room-waiting-inner content-box-over-bg">
         <h1>{isHost ? 'Room created' : 'Waiting for host'}</h1>
         <p className="room-code">Room code: <strong>{roomCode}</strong></p>
         {isHost && shareUrl && (
@@ -114,8 +114,7 @@ export function RoomWaitingScreen({
         </button>
       </div>
       <style>{`
-        .room-waiting { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem;
-          background: linear-gradient(160deg, #1f1412 0%, #3d2520 50%, #1f1412 100%); }
+        .room-waiting { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
         .room-waiting-inner { width: 100%; max-width: 420px; }
         .room-waiting h1 { font-size: 1.8rem; text-align: center; color: var(--accent); margin-bottom: 0.5rem; }
         .room-code { text-align: center; margin-bottom: 1rem; font-size: 1.1rem; }

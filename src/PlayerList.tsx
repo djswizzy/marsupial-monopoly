@@ -28,9 +28,6 @@ export function PlayerList({ state, currentPlayerIndex, onSelectPlayer }: Props)
         {state.players.map((player, index) => {
           const isCurrent = index === currentPlayerIndex
           const color = getPlayerColor(index)
-          const totalVp = player.railroads.reduce((sum, r) => sum + r.vp, 0) + 
-                         player.towns.reduce((sum, t) => sum + t.vp, 0)
-          
           return (
             <button
               key={player.id}
@@ -44,9 +41,6 @@ export function PlayerList({ state, currentPlayerIndex, onSelectPlayer }: Props)
                   {player.name}
                 </span>
                 {isCurrent && <span className="player-list-item-badge">Current</span>}
-              </div>
-              <div className="player-list-item-stats">
-                <span className="stat-vp">{totalVp} VP</span>
               </div>
               {(player.railroads.length > 0 || player.towns.length > 0 || player.buildings.length > 0 || Object.values(player.commodities).some(n => n > 0)) && (
                 <div className="player-list-item-details">
@@ -136,24 +130,6 @@ export function PlayerList({ state, currentPlayerIndex, onSelectPlayer }: Props)
           border-radius: 3px;
           font-weight: 600;
           text-transform: uppercase;
-        }
-        .player-list-item-stats {
-          display: flex;
-          gap: 0.75rem;
-          font-size: 0.8rem;
-          color: var(--text-muted);
-          flex-wrap: wrap;
-        }
-        .player-list-item-stats span {
-          white-space: nowrap;
-        }
-        .stat-money {
-          color: var(--accent);
-          font-weight: 600;
-        }
-        .stat-vp {
-          color: var(--green);
-          font-weight: 600;
         }
         .player-list-item-details {
           margin-top: 0.5rem;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { GameState } from './types'
 import type { GameAction } from './gameLogic'
+import type { LogEntry } from './GameLog'
 import { GameBoard } from './GameBoard'
 import { GameOver } from './GameOver'
 
@@ -22,6 +23,7 @@ export function OnlineGameRoom({
   onLeave,
 }: Props) {
   const [state, setState] = useState<GameState>(initialState)
+  const [serverLogEntries, setServerLogEntries] = useState<LogEntry[]>([])
   const pollingRef = useRef<number | null>(null)
   const lastStateHashRef = useRef<string>('')
 
@@ -51,8 +53,9 @@ export function OnlineGameRoom({
           console.error('Action failed:', data.error)
           return
         }
-        const newState = await res.json()
-        setState(newState)
+        const data = await res.json()
+        setState(data.gameState ?? data)
+        if (Array.isArray(data.gameLog)) setServerLogEntries(data.gameLog)
       } catch (err) {
         console.error('Action error:', err)
       }
@@ -65,7 +68,10 @@ export function OnlineGameRoom({
 
     async function pollGameState() {
       try {
-        const res = await fetch(`${API_BASE}/api/room/${roomCode}?playerId=${playerId}`)
+        const res = await fetch(`${API_BASE}/api/room/${roomCode}?playerId=${playerId}`, {
+          cache: 'no-store',
+          headers: { Pragma: 'no-cache', 'Cache-Control': 'no-cache' },
+        })
         if (!res.ok) return
         const data = await res.json()
         if (data.status === 'playing' && data.gameState) {
@@ -74,6 +80,10 @@ export function OnlineGameRoom({
             lastStateHashRef.current = stateHash
             setState(data.gameState)
           }
+          // Always sync log from server so all players see the same history
+          if (mounted && Array.isArray(data.gameLog)) {
+            setServerLogEntries(data.gameLog)
+          }
         }
       } catch (err) {
         // Silently handle polling errors
@@ -81,7 +91,7 @@ export function OnlineGameRoom({
     }
 
     pollGameState()
-    const interval = setInterval(pollGameState, 1000) // Poll every second during game
+    const interval = setInterval(pollGameState, 500) // Poll every 500ms so all players see log updates quickly
     pollingRef.current = interval as unknown as number
 
     return () => {
@@ -100,6 +110,7 @@ export function OnlineGameRoom({
       setState={setState}
       dispatch={dispatch}
       playerIndex={playerIndex}
+      serverLogEntries={serverLogEntries}
     />
   )
 }

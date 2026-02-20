@@ -13,7 +13,7 @@ type Props = {
   entries: LogEntry[]
 }
 
-const PLAYER_COLORS = [
+export const PLAYER_COLORS = [
   '#ff4444', // red
   '#44ff44', // green
   '#4444ff', // blue
@@ -21,7 +21,7 @@ const PLAYER_COLORS = [
   '#ffff44', // yellow
 ]
 
-function getPlayerColor(playerIndex: number): string {
+export function getPlayerColor(playerIndex: number): string {
   return PLAYER_COLORS[playerIndex % PLAYER_COLORS.length]
 }
 

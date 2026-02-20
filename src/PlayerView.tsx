@@ -27,7 +27,6 @@ export function PlayerView({ player, isCurrentTurn, onClose }: Props) {
       ) : (
         <div className="player-view-money">${player.money}</div>
       )}
-      
       <div className="player-view-section">
         <h4>Commodities</h4>
         {COMMODITIES.every(c => (player.commodities[c] ?? 0) === 0) ? (

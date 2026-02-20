@@ -99,7 +99,7 @@ export function LobbyScreen({ onPlayLocal, onCreateRoom, onJoinRoom }: Props) {
   if (mode === 'choice') {
     return (
       <div className="lobby">
-        <div className="lobby-inner">
+        <div className="lobby-inner content-box-over-bg">
           <h1>Marsupial Monopoly</h1>
           <p className="tagline">Build railroads, towns & goods in Astoria</p>
           <div className="lobby-buttons">
@@ -115,8 +115,7 @@ export function LobbyScreen({ onPlayLocal, onCreateRoom, onJoinRoom }: Props) {
           </div>
         </div>
         <style>{`
-          .lobby { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem;
-            background: linear-gradient(160deg, #1f1412 0%, #3d2520 50%, #1f1412 100%); }
+          .lobby { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
           .lobby-inner { width: 100%; max-width: 400px; }
           .lobby h1 { font-size: 2.2rem; text-align: center; color: var(--accent); margin-bottom: 0.25rem; }
           .tagline { text-align: center; color: var(--text-muted); margin-bottom: 2rem; font-size: 0.95rem; }
@@ -130,7 +129,7 @@ export function LobbyScreen({ onPlayLocal, onCreateRoom, onJoinRoom }: Props) {
   if (mode === 'create') {
     return (
       <div className="lobby">
-        <div className="lobby-inner">
+        <div className="lobby-inner content-box-over-bg">
           <h1>Create room</h1>
           <form onSubmit={handleCreate}>
             <div className="field">
@@ -153,8 +152,7 @@ export function LobbyScreen({ onPlayLocal, onCreateRoom, onJoinRoom }: Props) {
           </button>
         </div>
         <style>{`
-          .lobby { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem;
-            background: linear-gradient(160deg, #1f1412 0%, #3d2520 50%, #1f1412 100%); }
+          .lobby { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
           .lobby-inner { width: 100%; max-width: 380px; }
           .lobby h1 { font-size: 1.8rem; text-align: center; color: var(--accent); margin-bottom: 1.5rem; }
           .field { margin-bottom: 1rem; }
@@ -170,7 +168,7 @@ export function LobbyScreen({ onPlayLocal, onCreateRoom, onJoinRoom }: Props) {
 
   return (
     <div className="lobby">
-      <div className="lobby-inner">
+      <div className="lobby-inner content-box-over-bg">
         <h1>Join room</h1>
         <form onSubmit={handleJoin}>
           <div className="field">
@@ -204,8 +202,7 @@ export function LobbyScreen({ onPlayLocal, onCreateRoom, onJoinRoom }: Props) {
         </button>
       </div>
       <style>{`
-        .lobby { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem;
-          background: linear-gradient(160deg, #1f1412 0%, #3d2520 50%, #1f1412 100%); }
+        .lobby { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
         .lobby-inner { width: 100%; max-width: 380px; }
         .lobby h1 { font-size: 1.8rem; text-align: center; color: var(--accent); margin-bottom: 1.5rem; }
         .field { margin-bottom: 1rem; }

@@ -395,16 +395,21 @@ function endGame(s: GameState): GameState {
   return s;
 }
 
+/** Current VP for one player: towns + railroads + 2 per town–railroad pair + 1 per building. */
+export function getPlayerVp(player: Player): number {
+  let vp = player.towns.reduce((s, t) => s + t.vp, 0) + player.railroads.reduce((s, r) => s + r.vp, 0);
+  const pairs = Math.min(player.towns.length, player.railroads.length);
+  vp += pairs * 2;
+  vp += player.buildings.length; // each building = 1 VP
+  return vp;
+}
+
 export function computeScores(state: GameState): { playerIndex: number; vp: number; money: number }[] {
-  return state.players.map((p, i) => {
-    // Towns: printed VP on each; railroads: sum of each card's VP
-    let vp = p.towns.reduce((s, t) => s + t.vp, 0) + p.railroads.reduce((s, r) => s + r.vp, 0);
-    // +2 per town–railroad pair (town paired with a railroad at end of game)
-    const pairs = Math.min(p.towns.length, p.railroads.length);
-    vp += pairs * 2;
-    vp += p.buildings.length;
-    return { playerIndex: i, vp, money: p.money };
-  });
+  return state.players.map((p, i) => ({
+    playerIndex: i,
+    vp: getPlayerVp(p),
+    money: p.money,
+  }));
 }
 
 export function getWinner(state: GameState): number {

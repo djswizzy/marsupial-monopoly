@@ -1,5 +1,5 @@
 import type { GameState, Player, Commodity, Market, ProductionCard } from './types.js';
-import { createProductionDeck, createBuildingTiles, RAILROADS, TOWNS } from './data/cards.js';
+import { createProductionDeck, createBuildingTiles, RAILROADS, TOWNS, COMMODITY_NAMES } from './data/cards.js';
 
 /** Deep clone game state so it can be stored for undo without being mutated by subsequent actions. */
 export function cloneGameState(state: GameState): GameState {
@@ -415,6 +415,55 @@ export function getWinner(state: GameState): number {
 }
 
 export { COMMODITIES };
+
+/** Format a single action for the game log (server and client). */
+export function formatActionMessage(
+  action: { type: string; [k: string]: unknown },
+  state: GameState,
+  prevState?: GameState
+): string {
+  const useState = prevState ?? state
+  switch (action.type) {
+    case 'production': {
+      const player = useState.players[useState.currentPlayerIndex]
+      const card = player?.hand[action.cardIndex as number]
+      if (!card) return 'Played production card'
+      const commodities = (action.commoditiesToTake as Commodity[]) ?? []
+      const prodList = commodities.length > 0
+        ? commodities.map((c) => COMMODITY_NAMES[c]).join(', ')
+        : 'commodities'
+      const priceList = card.priceIncrease.length > 0
+        ? card.priceIncrease.map((c) => COMMODITY_NAMES[c]).join(', ')
+        : '—'
+      return `Played production card: took ${prodList}, raised ${priceList} by $1`
+    }
+    case 'sell':
+      return `Sold ${action.quantity} ${COMMODITY_NAMES[action.commodity as Commodity]}`
+    case 'discard':
+      return `Discarded ${COMMODITY_NAMES[action.commodity as Commodity]}`
+    case 'buyBuilding': {
+      const building = useState.buildingOffer[action.buildingIndex as number]
+      return building ? `Bought ${building.name} for $${building.cost}` : 'Bought building'
+    }
+    case 'buyTown': {
+      const town = useState.currentTown
+      if (!town) return 'Bought town'
+      return `Bought ${town.name} (${action.useSpecific ? 'specific commodities' : 'any commodities'})`
+    }
+    case 'startAuction': {
+      const railroad = useState.railroadOffer[action.railroadIndex as number]
+      return railroad ? `Started auction for ${railroad.name}` : 'Started auction'
+    }
+    case 'placeBid':
+      return `Bid $${action.amount}`
+    case 'passAuction':
+      return 'Passed on auction'
+    case 'endTurn':
+      return 'Ended turn'
+    default:
+      return 'Performed action'
+  }
+}
 
 /** Action types for online play - server applies these. */
 export type GameAction =

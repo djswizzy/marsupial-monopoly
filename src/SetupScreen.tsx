@@ -25,7 +25,7 @@ export function SetupScreen({ onStart }: Props) {
 
   return (
     <div className="setup">
-      <div className="setup-inner">
+      <div className="setup-inner content-box-over-bg">
         <h1>Marsupial Monopoly</h1>
         <p className="tagline">Build railroads, towns & goods in Astoria</p>
         <form onSubmit={handleSubmit}>
@@ -65,7 +65,7 @@ export function SetupScreen({ onStart }: Props) {
           align-items: center;
           justify-content: center;
           padding: 2rem;
-          background: linear-gradient(160deg, #1f1412 0%, #3d2520 50%, #1f1412 100%);
+          background: transparent;
         }
         .setup-inner {
           width: 100%;

@@ -5,6 +5,7 @@ import { initGame } from '../../../lib/gameLogic.js'
 interface RoomData {
   players: Array<{ id: string; name: string; index: number }>
   gameState: any
+  gameLog: Array<{ id: string; playerIndex: number; message: string; timestamp: number }>
   status: 'waiting' | 'playing'
 }
 
@@ -41,6 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const names = [...roomData.players].sort((a, b) => a.index - b.index).map(p => p.name)
   roomData.gameState = initGame(roomData.players.length, names)
+  roomData.gameLog = []
   roomData.status = 'playing'
   setGameState(roomCode, roomData)
 

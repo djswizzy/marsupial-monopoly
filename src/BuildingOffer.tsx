@@ -12,7 +12,6 @@ type Props = {
 export function BuildingOffer({ buildings, onSelect, onConfirmBuy, currentPlayerMoney, selectedBuildingIndex = null, selectionDisabled = false }: Props) {
   return (
     <div className="building-offer">
-      <h3>Buildings</h3>
       <div className="building-tiles">
         {buildings.map((b, i) => {
           const isSelected = selectedBuildingIndex === i
@@ -35,11 +34,6 @@ export function BuildingOffer({ buildings, onSelect, onConfirmBuy, currentPlayer
         })}
       </div>
       <style>{`
-        .building-offer h3 {
-          font-size: 0.9rem;
-          color: var(--text-muted);
-          margin-bottom: 0.5rem;
-        }
         .building-tiles {
           display: flex;
           flex-wrap: wrap;

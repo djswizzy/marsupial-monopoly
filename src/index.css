@@ -1,5 +1,6 @@
 :root {
   --bg: #1f1412;
+  --bg-image: url('/background.jpg');
   --surface: #3d2520;
   --surface2: #4a2e28;
   --accent: #b85450;
@@ -9,8 +10,8 @@
   --green: #4a7c59;
   --red: #c45c58;
   --border: #5c403c;
-  --font-display: 'Crimson Pro', Georgia, serif;
-  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Fredericka the Great', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
 }
 
 * {
@@ -20,7 +21,12 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: var(--bg-image);
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-body);
   font-size: 15px;
@@ -81,6 +87,29 @@ button.secondary:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 1rem;
+}
+
+/* Text areas over the background image: readable box + outline */
+.content-box-over-bg {
+  background: rgba(61, 37, 32, 0.94);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Railroad area: snug width, accent left edge */
+.content-box-railroad {
+  width: fit-content;
+  border-radius: 8px;
+  border-left: 4px solid var(--accent);
+}
+
+/* Town area: snug width, softer corner */
+.content-box-town {
+  width: fit-content;
+  border-radius: 14px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
 }
 
 .badge {
