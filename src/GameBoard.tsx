@@ -374,10 +374,10 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
                 <div className="railroad-offer-with-deck content-box-over-bg content-box-railroad">
                   <div className="offer-deck-and-cards">
                     <div className="deck-pile" title="Railroad deck">
-                      <div className="deck-card-back" aria-hidden />
                       <span className="deck-count" aria-label={`${state.railroadDeck.length} railroads remaining`}>
                         {state.railroadDeck.length}
                       </span>
+                      <div className="deck-card-back railroad-deck-back" aria-hidden />
                     </div>
                     <RailroadOffer
                       railroads={state.railroadOffer}
@@ -393,10 +393,10 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
                 <div className="town-offer-with-deck content-box-over-bg content-box-town">
                   <div className="offer-deck-and-cards">
                     <div className="deck-pile" title="Town deck">
-                      <div className="deck-card-back" aria-hidden />
                       <span className="deck-count" aria-label={`${state.townDeck.length} towns remaining`}>
                         {state.townDeck.length}
                       </span>
+                      <div className="deck-card-back town-deck-back" aria-hidden />
                     </div>
                     <div className="town-slot">
                       {state.currentTown ? (
@@ -1001,26 +1001,34 @@ export function GameBoard({ state, setState, dispatch, playerIndex, serverLogEnt
         .offer-deck-and-cards {
           display: flex;
           flex-direction: row;
-          align-items: flex-start;
+          align-items: center;
           gap: 0.75rem;
         }
         .deck-pile {
-          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0;
           flex-shrink: 0;
         }
         .deck-card-back {
           width: 100px;
-          height: 130px;
+          aspect-ratio: 100 / 130;
           background: linear-gradient(145deg, #2a3f5f 0%, #1a2840 100%);
-          border: 1px solid var(--border);
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+          border: none;
           border-radius: 10px;
           box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
         }
+        .deck-card-back.railroad-deck-back {
+          background-image: url('/Railroad.png');
+        }
+        .deck-card-back.town-deck-back {
+          background-image: url('/Town.png');
+        }
         .deck-count {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
           min-width: 1.5rem;
           height: 1.5rem;
           padding: 0 0.35rem;

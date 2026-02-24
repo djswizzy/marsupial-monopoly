@@ -23,8 +23,6 @@ export function OnlineGameRoom({
 }: Props) {
   const [state, setState] = useState<GameState>(initialState)
   const [serverLogEntries, setServerLogEntries] = useState<LogEntry[]>([])
-  const [lastSyncAt, setLastSyncAt] = useState<number | null>(null)
-  const [pollError, setPollError] = useState<string | null>(null)
   const pollingRef = useRef<number | null>(null)
   const roomCodeRef = useRef(roomCode)
   const playerIdRef = useRef(playerId)
@@ -78,34 +76,21 @@ export function OnlineGameRoom({
       const pid = String(playerIdRef.current || '').trim()
       if (!code || !pid) return
       try {
-        setPollError(null)
         const res = await fetch(
           `${API_BASE}/api/room/${code}?playerId=${encodeURIComponent(pid)}&_=${Date.now()}`,
           { cache: 'no-store', headers: { ...API_HEADERS, Pragma: 'no-cache', 'Cache-Control': 'no-cache' } }
         )
-        if (!res.ok) {
-          if (mounted) {
-            if (res.status === 404) setPollError('Room not found — server may have restarted. Leave and rejoin.')
-            else if (res.status === 403) setPollError('Not in room (403)')
-            else setPollError(`Sync failed: ${res.status}`)
-          }
-          return
-        }
+        if (!res.ok) return
         const data = await safeJson<{ status?: string; gameState?: GameState; gameLog?: LogEntry[] }>(res)
         if (!mounted) return
         if (data.status === 'playing' && data.gameState) {
           setState(data.gameState)
-          setLastSyncAt(Date.now())
         }
         if (Array.isArray(data.gameLog)) {
           setServerLogEntries(data.gameLog)
         }
-      } catch (e) {
-        const msg = (e as Error).message || String(e)
-        const friendly = msg.includes('fetch') || msg.includes('NetworkError')
-          ? 'Connection problem — retrying…'
-          : msg.slice(0, 40)
-        if (mounted) setPollError(friendly)
+      } catch {
+        // Poll again on next interval
       }
     }
 
@@ -125,9 +110,6 @@ export function OnlineGameRoom({
 
   return (
     <>
-      <div className="online-sync-bar" style={{ padding: '4px 8px', fontSize: 12, background: pollError ? '#4a1c1c' : lastSyncAt != null ? '#1c2e1c' : '#2a2a2a', color: '#ccc' }}>
-        {pollError ? `⚠ ${pollError}` : lastSyncAt != null ? `✓ Synced ${Math.round((Date.now() - lastSyncAt) / 1000)}s ago` : 'Syncing…'}
-      </div>
       <GameBoard
         state={state}
         setState={setState}

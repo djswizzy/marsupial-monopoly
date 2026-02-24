@@ -4,8 +4,6 @@ import { LobbyScreen } from './LobbyScreen'
 import { RoomWaitingScreen } from './RoomWaitingScreen'
 import { OnlineGameRoom } from './OnlineGameRoom'
 
-const API_BASE = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001')
-const showApiDebug = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1'
 
 type AppScreen =
   | { screen: 'lobby' }
@@ -37,16 +35,9 @@ export default function App() {
     setAppScreen({ screen: 'lobby' })
   }
 
-  const debugBanner = showApiDebug ? (
-    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '4px 8px', background: '#1a1a1a', color: '#0f0', fontSize: '11px', zIndex: 9999 }}>
-      API base (from build): {import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL) : '(not set, using origin)'} → {API_BASE}
-    </div>
-  ) : null
-
   if (appScreen.screen === 'lobby') {
     return (
       <>
-        {debugBanner}
         <LobbyScreen
           onCreateRoom={handleCreateRoom}
           onJoinRoom={handleJoinRoom}
@@ -58,7 +49,6 @@ export default function App() {
   if (appScreen.screen === 'room') {
     return (
       <>
-        {debugBanner}
         <RoomWaitingScreen
         roomCode={appScreen.roomCode}
         playerId={appScreen.playerId}
@@ -74,7 +64,6 @@ export default function App() {
   // appScreen.screen === 'online'
   return (
     <>
-      {debugBanner}
       <OnlineGameRoom
       roomCode={appScreen.roomCode}
       playerId={appScreen.playerId}

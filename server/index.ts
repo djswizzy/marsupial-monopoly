@@ -149,17 +149,14 @@ app.get('/api/room/:roomCode', (req, res) => {
   }
   const room = rooms.get(roomCode)
   if (!room) {
-    console.log('[GET room]', roomCode, 'playerId=' + (playerId ? 'yes' : 'no'), '-> 404')
     res.status(404).json({ error: 'Room not found' })
     return
   }
   const inRoom = !!playerId && room.players.some((p) => p.id === playerId)
   if (playerId && !inRoom) {
-    console.log('[GET room]', roomCode, 'playerId not in room -> 403')
     res.status(403).json({ error: 'Player not in room' })
     return
   }
-  console.log('[GET room]', roomCode, 'playerId=' + (playerId ? 'yes' : 'no'), '-> 200', 'playing=', room.status === 'playing')
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
   res.json({
     players: room.players.map((p) => ({ name: p.name, index: p.index })),
