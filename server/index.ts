@@ -88,12 +88,19 @@ function pushPendingLogEntry(room: Room, playerIndex: number, type: string, payl
   room.pendingLogEntries.push(makeLogEntry(room, playerIndex, type, payload, stateBefore, stateAfter))
 }
 
+function normalizeOrigin(o: string | undefined): string {
+  if (!o || typeof o !== 'string') return ''
+  return o.trim().replace(/\/$/, '')
+}
+
 const app = express()
 app.use(express.json())
 app.use((req, res, next) => {
-  const origin = req.headers.origin
-  const allow = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
-  res.setHeader('Access-Control-Allow-Origin', allow)
+  const origin = req.headers.origin as string | undefined
+  const normalized = normalizeOrigin(origin)
+  const allowedSet = new Set(ALLOWED_ORIGINS.map(normalizeOrigin).filter(Boolean))
+  const allow = origin && allowedSet.has(normalized) ? origin : (ALLOWED_ORIGINS[0] ?? '')
+  if (allow) res.setHeader('Access-Control-Allow-Origin', allow)
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, ngrok-skip-browser-warning, User-Agent, Pragma, Cache-Control')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   if (req.method === 'OPTIONS') {
@@ -125,7 +132,11 @@ app.post('/api/room/join', (req, res) => {
     res.status(400).json({ error: 'Invalid room code' })
     return
   }
-  const room = getOrCreateRoom(code)
+  const room = rooms.get(code)
+  if (!room) {
+    res.status(404).json({ error: 'Room not found. Check the code or ask the host to create a room first.' })
+    return
+  }
   if (room.status === 'playing') {
     res.status(400).json({ error: 'Game already started' })
     return
